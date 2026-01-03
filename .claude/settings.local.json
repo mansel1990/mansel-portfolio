@@ -8,7 +8,9 @@
       "Bash(npm run dev:*)",
       "Bash(dir:*)",
       "Bash(ls:*)",
-      "Bash(copy publicManselIcon.png appicon.png)"
+      "Bash(copy publicManselIcon.png appicon.png)",
+      "Bash(node generate-icons.js:*)",
+      "Bash(npm uninstall:*)"
     ]
   }
 }

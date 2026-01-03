@@ -15,29 +15,33 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://mansel.co.in"),
   title: "Sanjay Mansel | Senior Frontend Engineer & Tech Lead",
   description:
     "13+ years of frontend engineering excellence. Tech Specialist leading teams of 10+ engineers. Expert in React, TypeScript, Node.js, and scalable architecture. Featured work: $1M cost savings, <1s CSV processing of 30K+ rows.",
   keywords: ["Frontend Engineer", "Tech Lead", "React", "TypeScript", "Next.js", "Node.js", "Team Leadership"],
   authors: [{ name: "Sanjay Mansel" }],
   icons: {
-    icon: "/ManselIcon.png",
-    shortcut: "/ManselIcon.png",
-    apple: "/ManselIcon.png",
+    icon: [
+      { url: "/icon.png" },
+      { url: "/favicon.ico", sizes: "any" },
+    ],
+    apple: "/apple-icon.png",
   },
+  manifest: "/manifest.json",
   openGraph: {
     title: "Sanjay Mansel | Senior Frontend Engineer",
     description:
       "13+ years building high-performance frontend solutions. Tech Lead managing teams and delivering measurable business impact.",
     type: "website",
     url: "https://mansel.co.in",
-    images: ["/ManselIcon.png"],
+    images: [{ url: "/icon.png", width: 1200, height: 630 }],
   },
   twitter: {
     card: "summary_large_image",
     title: "Sanjay Mansel | Senior Frontend Engineer",
     description: "13+ years building high-performance frontend solutions.",
-    images: ["/ManselIcon.png"],
+    images: ["/icon.png"],
   },
 };
 

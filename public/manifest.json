@@ -1,0 +1,24 @@
+{
+  "name": "Sanjay Mansel - Senior Frontend Engineer",
+  "short_name": "Sanjay Mansel",
+  "description": "13+ years of frontend engineering excellence. Tech Specialist leading teams of 10+ engineers.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#0a0a0a",
+  "theme_color": "#0a0a0a",
+  "orientation": "portrait-primary",
+  "icons": [
+    {
+      "src": "/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}
