@@ -15,7 +15,7 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  metadataBase: new URL("https://mansel.co.in"),
+  metadataBase: new URL("https://mansel.in"),
   title: "Sanjay Mansel | AI-Augmented Full-Stack Engineer & Tech Lead",
   description:
     "13+ years building and scaling product teams across React, Node.js, and TypeScript. Tech Lead driving AI-native delivery with agentic coding tools and spec-driven workflows — 65% faster cycle time, 8-engineer team, 4-month PWA launch.",
@@ -34,7 +34,7 @@ export const metadata: Metadata = {
     description:
       "13+ years building and scaling product teams. Tech Lead leading AI-native delivery — agentic coding tools, spec-driven workflows, and full-stack ownership from architecture to production.",
     type: "website",
-    url: "https://mansel.co.in",
+    url: "https://mansel.in",
     images: [{ url: "/icon.png", width: 1200, height: 630 }],
   },
   twitter: {

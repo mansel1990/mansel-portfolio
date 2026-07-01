@@ -2,8 +2,10 @@
 
 import { useState } from "react";
 import { motion } from "framer-motion";
-import { Mail, User, MessageSquare, Send } from "lucide-react";
+import { Mail, User, MessageSquare, Send, CheckCircle2, AlertCircle } from "lucide-react";
 import { trackContactFormStart, trackContactFormSubmit } from "@/lib/analytics";
+
+type FormStatus = "idle" | "success" | "error";
 
 export default function ContactForm() {
   const [formData, setFormData] = useState({
@@ -12,32 +14,48 @@ export default function ContactForm() {
     message: "",
   });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [status, setStatus] = useState<FormStatus>("idle");
+  const [errorMessage, setErrorMessage] = useState("");
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
+    setStatus("idle");
+    setErrorMessage("");
 
-    // Track form submission start
-    trackContactFormSubmit(true);
+    try {
+      const response = await fetch("/api/contact", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData),
+      });
 
-    // Log to console
-    console.log("=== Contact Form Submission ===");
-    console.log("Name:", formData.name);
-    console.log("Email:", formData.email);
-    console.log("Message:", formData.message);
-    console.log("Timestamp:", new Date().toISOString());
-    console.log("===============================");
+      const data = (await response.json()) as { error?: string };
 
-    // Simulate submission delay
-    setTimeout(() => {
-      setIsSubmitting(false);
+      if (!response.ok) {
+        throw new Error(data.error ?? "Failed to send message.");
+      }
+
+      trackContactFormSubmit(true);
+      setStatus("success");
       setFormData({ name: "", email: "", message: "" });
-      alert("Message logged to console! Check your browser console.");
-    }, 1000);
+    } catch (error) {
+      trackContactFormSubmit(false);
+      setStatus("error");
+      setErrorMessage(
+        error instanceof Error ? error.message : "Failed to send message."
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
-    // Track when user starts filling the form
+    if (status !== "idle") {
+      setStatus("idle");
+      setErrorMessage("");
+    }
+
     if (formData.name === "" && formData.email === "" && formData.message === "") {
       trackContactFormStart();
     }
@@ -57,6 +75,26 @@ export default function ContactForm() {
       transition={{ duration: 0.6 }}
       className="mx-auto max-w-2xl space-y-6"
     >
+      {status === "success" && (
+        <div
+          role="status"
+          className="flex items-center gap-3 rounded-xl border border-accent-emerald/30 bg-accent-emerald/10 px-5 py-4 text-sm text-accent-emerald"
+        >
+          <CheckCircle2 className="h-5 w-5 flex-shrink-0" />
+          <p>Thanks! Your message has been sent. I&apos;ll get back to you soon.</p>
+        </div>
+      )}
+
+      {status === "error" && (
+        <div
+          role="alert"
+          className="flex items-center gap-3 rounded-xl border border-red-500/30 bg-red-500/10 px-5 py-4 text-sm text-red-400"
+        >
+          <AlertCircle className="h-5 w-5 flex-shrink-0" />
+          <p>{errorMessage}</p>
+        </div>
+      )}
+
       {/* Name Field */}
       <div className="group">
         <label htmlFor="name" className="mb-2 flex items-center gap-2 text-sm font-semibold text-foreground">
@@ -136,7 +174,7 @@ export default function ContactForm() {
       </motion.button>
 
       <p className="text-center text-sm text-muted-foreground">
-        Your message will be logged to the browser console
+        Messages are sent directly to my inbox
       </p>
     </motion.form>
   );
