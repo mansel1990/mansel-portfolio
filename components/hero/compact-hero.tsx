@@ -2,8 +2,44 @@
 
 import { motion } from "framer-motion";
 import { ArrowDown, ChevronRight } from "lucide-react";
+import dynamic from "next/dynamic";
+import { useSyncExternalStore } from "react";
+
+const Hero3DScene = dynamic(() => import("./hero-3d-scene"), {
+  ssr: false,
+});
+
+const REDUCED_MOTION_QUERY = "(prefers-reduced-motion: reduce)";
+const DESKTOP_QUERY = "(min-width: 1024px)";
+
+function subscribeToViewportPreferences(callback: () => void) {
+  const motionQuery = window.matchMedia(REDUCED_MOTION_QUERY);
+  const desktopQuery = window.matchMedia(DESKTOP_QUERY);
+  motionQuery.addEventListener("change", callback);
+  desktopQuery.addEventListener("change", callback);
+  return () => {
+    motionQuery.removeEventListener("change", callback);
+    desktopQuery.removeEventListener("change", callback);
+  };
+}
+
+function getShow3DSnapshot() {
+  const prefersReducedMotion = window.matchMedia(REDUCED_MOTION_QUERY).matches;
+  const isDesktop = window.matchMedia(DESKTOP_QUERY).matches;
+  return !prefersReducedMotion && isDesktop;
+}
+
+function getShow3DServerSnapshot() {
+  return false;
+}
 
 export default function CompactHero() {
+  const show3D = useSyncExternalStore(
+    subscribeToViewportPreferences,
+    getShow3DSnapshot,
+    getShow3DServerSnapshot
+  );
+
   const scrollToNext = () => {
     const skillsSection = document.getElementById("skills");
     if (skillsSection) {
@@ -14,13 +50,23 @@ export default function CompactHero() {
   return (
     <section
       id="about"
-      className="min-h-screen pt-12 pb-12 lg:pt-20"
+      className="relative min-h-screen pt-12 pb-12 lg:pt-20 overflow-hidden"
     >
+      {/* Subtle 3D neural-network scene, desktop only, respects reduced motion */}
+      {show3D && (
+        <>
+          <div className="absolute inset-0 opacity-35" aria-hidden="true">
+            <Hero3DScene />
+          </div>
+          <div className="pointer-events-none absolute inset-0 bg-gradient-to-b from-background/10 via-background/60 to-background" />
+        </>
+      )}
+
       <motion.div
         initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.8 }}
-        className="space-y-6"
+        className="relative z-10 space-y-6"
       >
         {/* Main Heading */}
         <div className="space-y-4">
@@ -44,9 +90,9 @@ export default function CompactHero() {
             transition={{ duration: 0.6, delay: 0.4 }}
             className="max-w-2xl text-lg leading-relaxed text-muted-foreground/90 sm:text-xl lg:text-2xl"
           >
-            Senior Frontend Engineer & Tech Lead specializing in building
-            scalable, high-performance web applications. Leading teams and
-            driving innovation with cutting-edge technologies.
+            Full-stack engineer and Tech Lead with 13+ years building and scaling
+            product teams. Leading AI-native delivery with agentic coding tools
+            and spec-driven workflows, end-to-end from architecture to production.
           </motion.p>
         </div>
 
@@ -59,8 +105,8 @@ export default function CompactHero() {
         >
           {[
             { value: "13+", label: "Years Experience", color: "emerald", from: "from-emerald-500/20", to: "to-emerald-500/5", border: "border-emerald-500/30", text: "text-emerald-400", glow: "bg-emerald-500", shadow: "hover:shadow-emerald-500/20" },
-            { value: "50+", label: "Projects Delivered", color: "cyan", from: "from-cyan-500/20", to: "to-cyan-500/5", border: "border-cyan-500/30", text: "text-cyan-400", glow: "bg-cyan-500", shadow: "hover:shadow-cyan-500/20" },
-            { value: "100%", label: "Client Satisfaction", color: "purple", from: "from-purple-500/20", to: "to-purple-500/5", border: "border-purple-500/30", text: "text-purple-400", glow: "bg-purple-500", shadow: "hover:shadow-purple-500/20" },
+            { value: "65%", label: "Faster Delivery", color: "cyan", from: "from-cyan-500/20", to: "to-cyan-500/5", border: "border-cyan-500/30", text: "text-cyan-400", glow: "bg-cyan-500", shadow: "hover:shadow-cyan-500/20" },
+            { value: "8→5", label: "Team Efficiency", color: "purple", from: "from-purple-500/20", to: "to-purple-500/5", border: "border-purple-500/30", text: "text-purple-400", glow: "bg-purple-500", shadow: "hover:shadow-purple-500/20" },
           ].map((stat, index) => (
             <motion.div
               key={index}

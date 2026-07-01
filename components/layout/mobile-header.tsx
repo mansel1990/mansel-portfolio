@@ -78,7 +78,7 @@ export default function MobileHeader() {
 
           <div>
             <h1 className="text-xl font-bold text-foreground">Sanjay Mansel</h1>
-            <p className="text-xs text-muted-foreground">Frontend Engineer</p>
+            <p className="text-xs text-muted-foreground">AI-Augmented Full-Stack Engineer</p>
           </div>
         </div>
         <button
@@ -114,7 +114,7 @@ export default function MobileHeader() {
               </ul>
               <div className="mt-6 flex items-center gap-4 pt-6 border-t border-border/50">
                 <a
-                  href="https://github.com/yourusername"
+                  href="https://github.com/mansel1990"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-muted-foreground transition-colors hover:text-accent-cyan"
@@ -122,7 +122,7 @@ export default function MobileHeader() {
                   <Github className="h-5 w-5" />
                 </a>
                 <a
-                  href="https://linkedin.com/in/yourusername"
+                  href="https://www.linkedin.com/in/sanjay-selvan-mansel/"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="text-muted-foreground transition-colors hover:text-accent-cyan"
@@ -130,7 +130,7 @@ export default function MobileHeader() {
                   <Linkedin className="h-5 w-5" />
                 </a>
                 <a
-                  href="mailto:your.email@example.com"
+                  href="mailto:sanj.mansel@gmail.com"
                   className="text-muted-foreground transition-colors hover:text-accent-cyan"
                 >
                   <Mail className="h-5 w-5" />

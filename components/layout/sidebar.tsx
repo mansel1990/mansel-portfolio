@@ -111,11 +111,12 @@ export default function Sidebar() {
             Sanjay Mansel
           </h1>
           <h2 className="mb-6 text-xl font-semibold text-accent-cyan">
-            Senior Frontend Engineer & Tech Lead
+            AI-Augmented Full-Stack Engineer & Tech Lead
           </h2>
           <p className="max-w-sm text-base leading-relaxed text-muted-foreground">
-            Building exceptional digital experiences with 13+ years of expertise.
-            Currently leading engineering teams and driving technical innovation.
+            13+ years building and scaling product teams. Leading AI-native
+            delivery with agentic coding tools and spec-driven workflows —
+            end-to-end from architecture to production.
           </p>
         </motion.div>
 

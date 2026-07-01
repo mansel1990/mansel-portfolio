@@ -16,10 +16,10 @@ const geistMono = Geist_Mono({
 
 export const metadata: Metadata = {
   metadataBase: new URL("https://mansel.co.in"),
-  title: "Sanjay Mansel | Senior Frontend Engineer & Tech Lead",
+  title: "Sanjay Mansel | AI-Augmented Full-Stack Engineer & Tech Lead",
   description:
-    "13+ years of frontend engineering excellence. Tech Specialist leading teams of 10+ engineers. Expert in React, TypeScript, Node.js, and scalable architecture. Featured work: $1M cost savings, <1s CSV processing of 30K+ rows.",
-  keywords: ["Frontend Engineer", "Tech Lead", "React", "TypeScript", "Next.js", "Node.js", "Team Leadership"],
+    "13+ years building and scaling product teams across React, Node.js, and TypeScript. Tech Lead driving AI-native delivery with agentic coding tools and spec-driven workflows — 65% faster cycle time, 8-engineer team, 4-month PWA launch.",
+  keywords: ["Full-Stack Engineer", "Tech Lead", "AI-Native Development", "Claude Code", "React", "TypeScript", "Next.js", "Node.js", "Team Leadership"],
   authors: [{ name: "Sanjay Mansel" }],
   icons: {
     icon: [
@@ -30,17 +30,17 @@ export const metadata: Metadata = {
   },
   manifest: "/manifest.json",
   openGraph: {
-    title: "Sanjay Mansel | Senior Frontend Engineer",
+    title: "Sanjay Mansel | AI-Augmented Full-Stack Engineer & Tech Lead",
     description:
-      "13+ years building high-performance frontend solutions. Tech Lead managing teams and delivering measurable business impact.",
+      "13+ years building and scaling product teams. Tech Lead leading AI-native delivery — agentic coding tools, spec-driven workflows, and full-stack ownership from architecture to production.",
     type: "website",
     url: "https://mansel.co.in",
     images: [{ url: "/icon.png", width: 1200, height: 630 }],
   },
   twitter: {
     card: "summary_large_image",
-    title: "Sanjay Mansel | Senior Frontend Engineer",
-    description: "13+ years building high-performance frontend solutions.",
+    title: "Sanjay Mansel | AI-Augmented Full-Stack Engineer & Tech Lead",
+    description: "13+ years building and scaling product teams with AI-native delivery.",
     images: ["/icon.png"],
   },
 };
