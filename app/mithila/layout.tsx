@@ -10,14 +10,14 @@ const cormorant = Cormorant_Garamond({
 });
 
 export const metadata: Metadata = {
-  title: "Written in the Stars",
-  description: "A sky made for one person.",
+  title: "The Long Walk Home",
+  description: "A road made for one person.",
   robots: { index: false, follow: false, nocache: true },
-  openGraph: { title: "Written in the Stars", description: "A sky made for one person." },
+  openGraph: { title: "The Long Walk Home", description: "A road made for one person." },
 };
 
 export const viewport: Viewport = {
-  themeColor: "#07091c",
+  themeColor: "#1a120c",
   width: "device-width",
   initialScale: 1,
   maximumScale: 1,
@@ -27,8 +27,8 @@ export const viewport: Viewport = {
 export default function MithilaLayout({ children }: { children: React.ReactNode }) {
   return (
     <div
-      className={`${cormorant.variable} fixed inset-0 overflow-hidden`}
-      style={{ background: "radial-gradient(ellipse at 50% 120%, #141a45 0%, #0b0e2a 45%, #050614 100%)" }}
+      className={`${cormorant.variable} mithila-serif min-h-screen w-full`}
+      style={{ background: "radial-gradient(ellipse at 50% 110%, #5c3a28 0%, #1a120c 50%, #0c0908 100%)" }}
     >
       {children}
     </div>

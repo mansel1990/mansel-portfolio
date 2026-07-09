@@ -10,6 +10,9 @@ import World from "./World";
 import ClueCard from "./ClueCard";
 import MemoryBloom from "./MemoryBloom";
 import Finale from "./Finale";
+import SideGames from "./SideGames";
+import BridgeDash from "./sequences/BridgeDash";
+import LanternChase from "./sequences/LanternChase";
 import { Toast, TopBar, MiniMap, PauseMenu } from "./hud";
 
 function hasWebGL(): boolean {
@@ -22,14 +25,19 @@ function hasWebGL(): boolean {
 }
 
 export default function MithilaApp() {
-  const { unlocked, phase, setPhase, activeLand, muted } = useMithila();
+  const unlocked = useMithila((s) => s.unlocked);
+  const phase = useMithila((s) => s.phase);
+  const setPhase = useMithila((s) => s.setPhase);
+  const activeLand = useMithila((s) => s.activeLand);
+  const activeSideGame = useMithila((s) => s.activeSideGame);
+  const activeSequence = useMithila((s) => s.activeSequence);
+  const muted = useMithila((s) => s.muted);
   const [webgl, setWebgl] = useState<boolean | null>(null);
   const [hydrated, setHydrated] = useState(false);
   const [showMap, setShowMap] = useState(false);
   const [showMenu, setShowMenu] = useState(false);
 
   useEffect(() => {
-    // async callback avoids a sync setState in the effect body
     const id = requestAnimationFrame(() => {
       setWebgl(hasWebGL());
       setHydrated(true);
@@ -37,7 +45,6 @@ export default function MithilaApp() {
     return () => cancelAnimationFrame(id);
   }, []);
 
-  // restore phase after hydration
   useEffect(() => {
     if (!hydrated) return;
     if (unlocked && phase === "gate") setPhase("world");
@@ -47,14 +54,13 @@ export default function MithilaApp() {
     audio.setMuted(muted);
   }, [muted]);
 
-  // when the finale hands back control, bring the medley home
   useEffect(() => {
     if (phase === "world" && unlocked && useMithila.getState().finaleSeen) {
       audio.playMusic(medleySrc, { loop: true, volume: 0.75 });
     }
   }, [phase, unlocked]);
 
-  useEffect(() => () => audio.stopAll(), []);
+  // Don't stopAll on unmount — navigating to /mithila/gallery should keep the medley.
 
   if (!hydrated || webgl === null) return null;
 
@@ -78,6 +84,11 @@ export default function MithilaApp() {
             {phase === "trial" && land && <ClueCard key={"trial" + land.id} land={land} />}
             {phase === "gallery" && land && <MemoryBloom key={"gal" + land.id} land={land} />}
             {phase === "finale" && <Finale key="finale" />}
+            {phase === "side-game" && activeSideGame && (
+              <SideGames key={activeSideGame} game={activeSideGame} />
+            )}
+            {phase === "sequence" && activeSequence === "bridge-dash" && <BridgeDash key="bridge" />}
+            {phase === "sequence" && activeSequence === "lantern-chase" && <LanternChase key="lantern" />}
           </AnimatePresence>
         </>
       )}
@@ -85,7 +96,6 @@ export default function MithilaApp() {
   );
 }
 
-// ---------- graceful non-WebGL fallback: the road as a list ----------
 function Fallback2D() {
   const frontier = useMithila((s) => s.frontier);
   const openTrial = useMithila((s) => s.openTrial);

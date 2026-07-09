@@ -7,8 +7,11 @@ import { useFrame } from "@react-three/fiber";
 import { useTexture, Html } from "@react-three/drei";
 import { lands } from "@/lib/mithila/data";
 import { landT, sideAt, yawAt, buildSparks } from "@/lib/mithila/world";
+import { mithilaInput } from "@/lib/mithila/input";
 import { useMithila } from "@/lib/mithila/store";
 import { sfx } from "./audio";
+
+const SPARK_PICK_RADIUS = 2.6;
 
 const flat = (color: string, extra: Partial<THREE.MeshStandardMaterialParameters> = {}) =>
   new THREE.MeshStandardMaterial({ color, flatShading: true, ...extra });
@@ -677,23 +680,123 @@ function FinaleLanterns({ center, accent }: { center: [number, number, number]; 
   );
 }
 
+/** Per-biome accent ring + pattern so each land reads as a different world */
+function BiomePad({ landIndex, locked }: { landIndex: number; locked: boolean }) {
+  const land = lands[landIndex];
+  const c = landT.center(landIndex);
+  const pos = sideAt(c, 0);
+  const yaw = yawAt(c);
+  const ground = locked ? "#3a3a48" : land.ground;
+  const accent = locked ? "#5a5a6a" : land.accent;
+  const skyTint = locked ? "#2a2a38" : land.sky;
+
+  // pattern style by land index
+  const pattern = landIndex % 5;
+
+  return (
+    <group position={[pos.x, 0, pos.z]} rotation={[0, yaw, 0]}>
+      {/* large colored biome floor */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.08, 0]}>
+        <circleGeometry args={[15.5, 40]} />
+        <meshStandardMaterial color={ground} flatShading />
+      </mesh>
+      {/* outer accent ring */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.05, 0]}>
+        <ringGeometry args={[14.2, 15.5, 48]} />
+        <meshStandardMaterial
+          color={accent}
+          flatShading
+          emissive={locked ? "#000000" : accent}
+          emissiveIntensity={locked ? 0 : 0.35}
+        />
+      </mesh>
+      {/* inner sky-tinted disc for color punch */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.04, 0]}>
+        <circleGeometry args={[6.5, 28]} />
+        <meshStandardMaterial color={skyTint} flatShading transparent opacity={locked ? 0.25 : 0.45} />
+      </mesh>
+
+      {/* pattern overlays */}
+      {!locked && pattern === 0 &&
+        Array.from({ length: 8 }).map((_, k) => (
+          <mesh
+            key={k}
+            rotation={[-Math.PI / 2, 0, (k / 8) * Math.PI * 2]}
+            position={[Math.cos((k / 8) * Math.PI * 2) * 9, -0.03, Math.sin((k / 8) * Math.PI * 2) * 9]}
+          >
+            <circleGeometry args={[1.1, 6]} />
+            <meshStandardMaterial color={accent} flatShading transparent opacity={0.35} />
+          </mesh>
+        ))}
+      {!locked && pattern === 1 &&
+        Array.from({ length: 6 }).map((_, k) => (
+          <mesh
+            key={k}
+            rotation={[-Math.PI / 2, 0, 0]}
+            position={[(k % 3) * 4 - 4, -0.03, Math.floor(k / 3) * 5 - 2.5]}
+          >
+            <planeGeometry args={[2.8, 0.35]} />
+            <meshStandardMaterial color={accent} flatShading transparent opacity={0.4} />
+          </mesh>
+        ))}
+      {!locked && pattern === 2 &&
+        Array.from({ length: 12 }).map((_, k) => (
+          <mesh
+            key={k}
+            rotation={[-Math.PI / 2, 0, 0]}
+            position={[Math.sin(k * 1.7) * 8, -0.02, Math.cos(k * 2.1) * 8]}
+          >
+            <circleGeometry args={[0.55, 5]} />
+            <meshStandardMaterial color={accent} flatShading emissive={accent} emissiveIntensity={0.25} />
+          </mesh>
+        ))}
+      {!locked && pattern === 3 && (
+        <mesh rotation={[-Math.PI / 2, 0, Math.PI / 4]} position={[0, -0.03, 0]}>
+          <ringGeometry args={[7, 8.2, 4]} />
+          <meshStandardMaterial color={accent} flatShading transparent opacity={0.5} />
+        </mesh>
+      )}
+      {!locked && pattern === 4 &&
+        Array.from({ length: 5 }).map((_, k) => (
+          <mesh key={k} rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.03, -6 + k * 3]}>
+            <planeGeometry args={[18, 0.45]} />
+            <meshStandardMaterial color={accent} flatShading transparent opacity={0.28} />
+          </mesh>
+        ))}
+
+      {/* floating biome name */}
+      <Html position={[0, 3.2, 0]} center distanceFactor={14} zIndexRange={[20, 0]} style={{ pointerEvents: "none" }}>
+        <div className="mithila-serif text-center" style={{ width: 220 }}>
+          <div
+            className="italic font-medium"
+            style={{
+              fontSize: 22,
+              color: locked ? "#9a9ab0" : accent,
+              textShadow: "0 2px 12px rgba(0,0,0,0.85)",
+              opacity: locked ? 0.55 : 1,
+            }}
+          >
+            {land.title}
+          </div>
+          <div style={{ fontSize: 12, letterSpacing: "0.25em", color: "#f5f0e8", opacity: 0.65 }}>
+            {locked ? "locked biome" : land.years}
+          </div>
+        </div>
+      </Html>
+    </group>
+  );
+}
+
 // ============ ground islands + everything assembled ============
 export function AllLands() {
   const frontier = useMithila((s) => s.frontier);
   return (
     <group>
       {lands.map((land, i) => {
-        const c = landT.center(i);
-        const pos = sideAt(c, 0);
         const locked = frontier <= i;
         return (
           <group key={land.id}>
-            {/* ground island */}
-            <mesh position={[pos.x, -0.06, pos.z]} rotation={[-Math.PI / 2, 0, 0]}>
-              <circleGeometry args={[17, 24]} />
-              <meshStandardMaterial color={locked ? "#4a4a56" : land.ground} flatShading />
-            </mesh>
-            {/* dressing — desaturated lands still show silhouettes */}
+            <BiomePad landIndex={i} locked={locked} />
             <group visible={Math.abs(frontier - i) <= 2 || !locked}>
               <LandProps landIndex={i} />
             </group>
@@ -725,32 +828,55 @@ export function Sparks() {
 function SparkGem({ def, onCollect }: { def: { id: string; pos: THREE.Vector3 }; onCollect: () => void }) {
   const g = useRef<THREE.Group>(null);
   const [dying, setDying] = useState(false);
-  const mat = useMemo(() => flat("#ffd700", { emissive: "#ffd700", emissiveIntensity: 1.2 }), []);
+  const taken = useRef(false);
+  const mat = useMemo(() => flat("#c4b5fd", { emissive: "#a78bfa", emissiveIntensity: 1.35 }), []);
+
+  const take = () => {
+    if (taken.current || dying) return;
+    taken.current = true;
+    setDying(true);
+    mat.transparent = true;
+    sfx.spark();
+    if (navigator.vibrate) navigator.vibrate([12, 30, 12]);
+    onCollect();
+  };
+
   useFrame(({ clock }, delta) => {
     if (!g.current) return;
-    g.current.rotation.y += delta * 2;
+    g.current.rotation.y += delta * 2.4;
     g.current.position.y = def.pos.y + Math.sin(clock.elapsedTime * 2 + def.pos.x) * 0.15;
+
+    if (!taken.current) {
+      const dx = mithilaInput.playerX - def.pos.x;
+      const dz = mithilaInput.playerZ - def.pos.z;
+      if (dx * dx + dz * dz < SPARK_PICK_RADIUS * SPARK_PICK_RADIUS) take();
+    }
+
     if (dying) {
       g.current.scale.multiplyScalar(1 + delta * 9);
-      (mat as THREE.MeshStandardMaterial).opacity = Math.max(0, (mat.opacity ?? 1) - delta * 4);
+      mat.opacity = Math.max(0, mat.opacity - delta * 4);
     }
   });
+
   return (
     <group
       ref={g}
       position={def.pos}
       onClick={(e) => {
         e.stopPropagation();
-        if (dying) return;
-        setDying(true);
-        mat.transparent = true;
-        sfx.spark();
-        if (navigator.vibrate) navigator.vibrate([12, 30, 12]);
-        setTimeout(onCollect, 280);
+        take();
+      }}
+      onPointerDown={(e) => {
+        e.stopPropagation();
+        take();
       }}
     >
+      {/* large invisible hit target */}
+      <mesh visible={false}>
+        <sphereGeometry args={[1.2, 8, 8]} />
+      </mesh>
       <mesh material={mat}>
-        <octahedronGeometry args={[0.16, 0]} />
+        <octahedronGeometry args={[0.32, 0]} />
       </mesh>
     </group>
   );

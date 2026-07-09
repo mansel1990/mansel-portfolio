@@ -8,7 +8,6 @@ import { Stars } from "@react-three/drei";
 import { lands, medleySrc } from "@/lib/mithila/data";
 import {
   pointAt,
-  tangentAt,
   nearestT,
   maxT,
   landT,
@@ -16,13 +15,36 @@ import {
   yawAt,
   buildRoadGeometry,
   LAND_COUNT,
+  sideAt,
 } from "@/lib/mithila/world";
+import { biomePads, clampToBiomes, distToFrontierGate } from "@/lib/mithila/physics";
+import { mithilaInput, consumeJump } from "@/lib/mithila/input";
 import { useMithila, stageForFrontier } from "@/lib/mithila/store";
 import { audio, sfx } from "./audio";
 import { Mithi, Rudra, type CharAnim } from "./Mithi";
 import { AllLands, Sparks } from "./lands";
+import { Coins, Tunnels, CoinDoorHints, CoinPhotoFlash } from "./collectibles";
+import { VirtualPad } from "./hud";
 
-type Walk = { t: number; target: number; running: boolean };
+type Walk = {
+  /** progress along road 0..1 (for atmosphere / resume / gates) */
+  t: number;
+  /** free-world position */
+  x: number;
+  z: number;
+  y: number;
+  vy: number;
+  yaw: number;
+  running: boolean;
+  /** tap-to-walk target in XZ, or null */
+  tapX: number | null;
+  tapZ: number | null;
+};
+
+const JUMP_V = 5.2;
+const GRAVITY = 18;
+const MOVE_SPEED = 7.5;
+const RUN_MULT = 1.55;
 
 // ---------- atmosphere: sky/fog/light lerp with position ----------
 function Atmosphere({ walk }: { walk: React.RefObject<Walk> }) {
@@ -33,7 +55,7 @@ function Atmosphere({ walk }: { walk: React.RefObject<Walk> }) {
   const fogA = useMemo(() => new THREE.Color(), []);
 
   useEffect(() => {
-    scene.fog = new THREE.Fog("#ffd9b8", 25, 95);
+    scene.fog = new THREE.Fog("#ffd9b8", 28, 110);
     return () => {
       scene.fog = null;
       scene.background = null;
@@ -50,7 +72,7 @@ function Atmosphere({ walk }: { walk: React.RefObject<Walk> }) {
     if (!(scene.background instanceof THREE.Color)) scene.background = new THREE.Color();
     (scene.background as THREE.Color).copy(skyA);
     if (scene.fog instanceof THREE.Fog) scene.fog.color.copy(fogA);
-    const night = f / (LAND_COUNT - 1); // 0 dawn -> 1 deep night
+    const night = f / (LAND_COUNT - 1);
     if (amb.current) amb.current.intensity = 0.95 - night * 0.45;
     if (sun.current) sun.current.intensity = 1.15 - night * 0.75;
   });
@@ -63,7 +85,7 @@ function Atmosphere({ walk }: { walk: React.RefObject<Walk> }) {
   );
 }
 
-// ---------- character + camera controller ----------
+// ---------- character + camera controller (free XZ + jump) ----------
 function Controller({ walk, anim }: { walk: React.RefObject<Walk>; anim: React.RefObject<CharAnim> }) {
   const { camera } = useThree();
   const mithiRef = useRef<THREE.Group>(null);
@@ -71,66 +93,159 @@ function Controller({ walk, anim }: { walk: React.RefObject<Walk>; anim: React.R
   const stage = stageForFrontier(useMithila((s) => s.frontier));
   const camPos = useMemo(() => new THREE.Vector3(0, 4, 8), []);
   const lookAt = useMemo(() => new THREE.Vector3(), []);
+  const pads = useMemo(() => biomePads(), []);
+  const keys = useRef({ w: false, a: false, s: false, d: false, space: false });
+
+  useEffect(() => {
+    const on = (e: KeyboardEvent, v: boolean) => {
+      if (e.code === "KeyW" || e.code === "ArrowUp") keys.current.w = v;
+      if (e.code === "KeyS" || e.code === "ArrowDown") keys.current.s = v;
+      if (e.code === "KeyA" || e.code === "ArrowLeft") keys.current.a = v;
+      if (e.code === "KeyD" || e.code === "ArrowRight") keys.current.d = v;
+      if (e.code === "Space") {
+        keys.current.space = v;
+        if (v) mithilaInput.jumpPressed = true;
+      }
+    };
+    const kd = (e: KeyboardEvent) => on(e, true);
+    const ku = (e: KeyboardEvent) => on(e, false);
+    window.addEventListener("keydown", kd);
+    window.addEventListener("keyup", ku);
+    return () => {
+      window.removeEventListener("keydown", kd);
+      window.removeEventListener("keyup", ku);
+    };
+  }, []);
 
   useFrame((_, delta) => {
     const w = walk.current;
     const a = anim.current;
     const s = useMithila.getState();
     const d = Math.min(delta, 0.05);
+    const active = s.phase === "world";
 
-    // consume fast travel
+    // fast travel → snap to land center
     if (s.travelTo !== null) {
-      w.target = landT.center(s.travelTo);
-      w.running = true;
+      const dest = sideAt(landT.center(s.travelTo), 0);
+      w.x = dest.x;
+      w.z = dest.z;
+      w.t = landT.center(s.travelTo);
+      w.tapX = null;
+      w.tapZ = null;
+      w.running = false;
       s.consumeTravel();
     }
 
-    // clamp target by frontier
-    const lim = maxT(s.frontier);
-    w.target = THREE.MathUtils.clamp(w.target, 0, lim);
+    let ix = mithilaInput.x + (keys.current.d ? 1 : 0) - (keys.current.a ? 1 : 0);
+    let iy = mithilaInput.y + (keys.current.w ? 1 : 0) - (keys.current.s ? 1 : 0);
+    const stickLen = Math.hypot(ix, iy);
+    if (stickLen > 1) {
+      ix /= stickLen;
+      iy /= stickLen;
+    }
 
-    // move
-    const speed = (w.running ? 0.042 : 0.016) * (s.phase === "world" ? 1 : 0);
-    const diff = w.target - w.t;
-    const step = Math.sign(diff) * Math.min(Math.abs(diff), speed * d * 60 * 0.016);
-    w.t += step;
-    const moving = Math.abs(diff) > 0.0015;
-    if (!moving) w.running = false;
-    a.moving = moving;
-    a.running = w.running;
+    // camera-relative move (XZ)
+    const forward = new THREE.Vector3();
+    camera.getWorldDirection(forward);
+    forward.y = 0;
+    if (forward.lengthSq() < 1e-6) forward.set(0, 0, -1);
+    else forward.normalize();
+    const right = new THREE.Vector3().crossVectors(forward, new THREE.Vector3(0, 1, 0)).normalize();
+
+    let mx = 0;
+    let mz = 0;
+    if (active && stickLen > 0.08) {
+      w.tapX = null;
+      w.tapZ = null;
+      const speed = MOVE_SPEED * (stickLen > 0.85 ? RUN_MULT : 1);
+      const dirX = right.x * ix + forward.x * iy;
+      const dirZ = right.z * ix + forward.z * iy;
+      mx = dirX * speed * d;
+      mz = dirZ * speed * d;
+      w.yaw = Math.atan2(dirX, dirZ);
+      w.running = stickLen > 0.85;
+    } else if (active && w.tapX !== null && w.tapZ !== null) {
+      const dx = w.tapX - w.x;
+      const dz = w.tapZ - w.z;
+      const dist = Math.hypot(dx, dz);
+      if (dist < 0.35) {
+        w.tapX = null;
+        w.tapZ = null;
+        w.running = false;
+      } else {
+        const speed = MOVE_SPEED * (w.running ? RUN_MULT : 1);
+        const step = Math.min(dist, speed * d);
+        mx = (dx / dist) * step;
+        mz = (dz / dist) * step;
+        w.yaw = Math.atan2(dx, dz);
+      }
+    } else {
+      w.running = false;
+    }
+
+    // jump
+    if (active && w.y <= 0.01 && consumeJump()) {
+      w.vy = JUMP_V;
+      sfx.tap();
+    }
+    w.vy -= GRAVITY * d;
+    w.y = Math.max(0, w.y + w.vy * d);
+    if (w.y <= 0) {
+      w.y = 0;
+      w.vy = 0;
+    }
+
+    let nx = w.x + mx;
+    let nz = w.z + mz;
+    const clamped = clampToBiomes(nx, nz, s.frontier, pads);
+    w.x = clamped.x;
+    w.z = clamped.z;
+    mithilaInput.playerX = w.x;
+    mithilaInput.playerZ = w.z;
+
+    // sync road t from nearest point (for atmosphere + gate)
+    const nt = nearestT(new THREE.Vector3(w.x, 0, w.z), 40);
+    if (nt !== null) w.t = Math.min(nt, maxT(s.frontier) + 0.02);
+
+    const moving = Math.hypot(mx, mz) > 0.001 || w.y > 0.02;
+    a.moving = moving && w.y <= 0.02;
+    a.running = w.running && a.moving;
     a.celebrateUntil = Math.max(a.celebrateUntil, s.celebrateUntil);
 
-    // place Mithi
-    const p = pointAt(w.t);
-    const yaw = yawAt(w.t) + (moving && diff < 0 ? Math.PI : 0);
     if (mithiRef.current) {
-      mithiRef.current.position.set(p.x, 0, p.z);
+      mithiRef.current.position.set(w.x, w.y, w.z);
       const cur = mithiRef.current.rotation.y;
-      mithiRef.current.rotation.y = cur + (yaw - cur) * Math.min(1, d * 8);
+      mithiRef.current.rotation.y = cur + (w.yaw - cur) * Math.min(1, d * 10);
     }
 
-    // Rudra follows behind (stage 3+)
     if (rudraRef.current) {
-      const rt = Math.max(0, w.t - 0.0055);
-      const rp = pointAt(rt);
-      rudraRef.current.position.lerp(new THREE.Vector3(rp.x, 0, rp.z), Math.min(1, d * 4));
-      rudraRef.current.rotation.y = yaw;
+      const behind = new THREE.Vector3(
+        w.x - Math.sin(w.yaw) * 1.4,
+        0,
+        w.z - Math.cos(w.yaw) * 1.4,
+      );
+      rudraRef.current.position.lerp(behind, Math.min(1, d * 4));
+      rudraRef.current.rotation.y = w.yaw;
     }
 
-    // camera: behind + above, looking ahead
-    const tan = tangentAt(w.t);
-    const behind = new THREE.Vector3(p.x - tan.x * 6.5, 4.2, p.z - tan.z * 6.5);
-    camPos.lerp(behind, Math.min(1, d * 2.2));
+    // chase cam
+    const back = new THREE.Vector3(w.x - Math.sin(w.yaw) * 6.8, 4.4 + w.y * 0.3, w.z - Math.cos(w.yaw) * 6.8);
+    camPos.lerp(back, Math.min(1, d * 2.4));
     camera.position.copy(camPos);
-    lookAt.lerp(new THREE.Vector3(p.x + tan.x * 3, 1.2, p.z + tan.z * 3), Math.min(1, d * 3));
+    lookAt.lerp(new THREE.Vector3(w.x + Math.sin(w.yaw) * 2.5, 1.2 + w.y, w.z + Math.cos(w.yaw) * 2.5), Math.min(1, d * 3));
     camera.lookAt(lookAt);
 
-    // track land + persist occasionally
     const li = landOf(w.t);
     if (li !== s.lastLand) s.setLastLand(li);
 
-    // finale trigger: inside Birthday City with all gates open
-    if (s.frontier >= LAND_COUNT && !s.finaleSeen && s.phase === "world" && w.t > landT.start(9) + 0.02) {
+    // finale only after lantern chase (or if she already cleared it)
+    if (
+      s.frontier >= LAND_COUNT &&
+      !s.finaleSeen &&
+      s.actionFlags.lanternChase &&
+      s.phase === "world" &&
+      w.t > landT.start(9) + 0.02
+    ) {
       s.setPhase("finale");
     }
   });
@@ -149,48 +264,48 @@ function Controller({ walk, anim }: { walk: React.RefObject<Walk>; anim: React.R
   );
 }
 
-// ---------- tap-to-walk ground ----------
+// ---------- tap-to-walk on road + biome pads ----------
 function TapGround({ walk }: { walk: React.RefObject<Walk> }) {
-  const geo = useMemo(() => buildRoadGeometry(1.5), []);
+  const geo = useMemo(() => buildRoadGeometry(1.8), []);
   const handleTap = (e: { point: THREE.Vector3; stopPropagation: () => void }) => {
     e.stopPropagation();
     const s = useMithila.getState();
     if (s.phase !== "world") return;
-    const t = nearestT(e.point, 10);
-    if (t === null) return;
     const lim = maxT(s.frontier);
-    if (t > lim + 0.01) {
+    const t = nearestT(e.point, 22);
+    if (t !== null && t > lim + 0.015) {
       sfx.gateRattle();
       s.setToast(`${lands[Math.min(s.frontier, LAND_COUNT - 1)].gateName} is locked — walk up to it.`);
+      return;
     }
     sfx.tap();
-    walk.current.target = THREE.MathUtils.clamp(t, 0, lim);
+    walk.current.tapX = e.point.x;
+    walk.current.tapZ = e.point.z;
+    walk.current.running = false;
   };
   return (
     <>
-      {/* visible road */}
-      <mesh geometry={geo} onClick={handleTap}>
-        <meshStandardMaterial color="#d8c8a8" flatShading />
+      <mesh geometry={geo} onClick={handleTap} position={[0, 0.02, 0]}>
+        <meshStandardMaterial color="#c4a574" flatShading />
       </mesh>
-      {/* generous invisible tap band (also catches taps beside the road) */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.01, -130]} onClick={handleTap}>
-        <planeGeometry args={[90, 300]} />
+      {/* wide invisible plane for tap-to-walk across biomes */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -0.02, -130]} onClick={handleTap}>
+        <planeGeometry args={[120, 320]} />
         <meshBasicMaterial visible={false} />
       </mesh>
     </>
   );
 }
 
-// ---------- gate proximity prompt + stage transformation moments ----------
 function useGateProximity(walk: React.RefObject<Walk>) {
   const [nearGate, setNearGate] = useState(false);
   useEffect(() => {
     const iv = setInterval(() => {
       const s = useMithila.getState();
       if (s.phase !== "world" || s.frontier >= LAND_COUNT) return setNearGate(false);
-      const lim = maxT(s.frontier);
-      setNearGate(lim - walk.current.t < 0.02);
-    }, 250);
+      const d = distToFrontierGate(walk.current.x, walk.current.z, s.frontier);
+      setNearGate(d < 4.2);
+    }, 200);
     return () => clearInterval(iv);
   }, [walk]);
   return nearGate;
@@ -202,39 +317,94 @@ const transformLines: Record<number, { title: string; sub: string }> = {
   4: { title: "2026", sub: "Happy birthday, Queen Mithila." },
 };
 
-// ---------- the world ----------
 export default function World() {
-  const walk = useRef<Walk>({ t: 0, target: 0, running: false });
+  const walk = useRef<Walk>({
+    t: 0,
+    x: 0,
+    z: 0,
+    y: 0,
+    vy: 0,
+    yaw: 0,
+    running: false,
+    tapX: null,
+    tapZ: null,
+  });
   const anim = useRef<CharAnim>({ moving: false, running: false, celebrateUntil: 0 });
   const frontier = useMithila((s) => s.frontier);
   const shownStage = useMithila((s) => s.shownStage);
   const markStageShown = useMithila((s) => s.markStageShown);
   const openTrial = useMithila((s) => s.openTrial);
+  const startSequence = useMithila((s) => s.startSequence);
   const lastLand = useMithila((s) => s.lastLand);
   const [transform, setTransform] = useState<{ title: string; sub: string } | null>(null);
+  const [biomeLabel, setBiomeLabel] = useState("");
   const nearGate = useGateProximity(walk);
   const booted = useRef(false);
+  const seqArmed = useRef({ bridge: false, lantern: false });
 
-  // resume position + start medley once
   useEffect(() => {
     if (booted.current) return;
     booted.current = true;
-    const t = landT.center(Math.min(lastLand, frontier - 1 < 0 ? 0 : Math.min(lastLand, 9)));
+    const li = Math.min(lastLand, Math.max(0, frontier - 1));
+    const t = landT.center(li);
+    const p = pointAt(Math.min(t, maxT(frontier)));
     walk.current.t = Math.min(t, maxT(frontier));
-    walk.current.target = walk.current.t;
+    walk.current.x = p.x;
+    walk.current.z = p.z;
+    walk.current.yaw = yawAt(walk.current.t);
     audio.playMusic(medleySrc, { loop: true, volume: 0.75 });
+    setBiomeLabel(lands[li].title);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // restart support: when frontier drops back to 1, snap to start
   useEffect(() => {
     if (frontier === 1 && booted.current) {
-      walk.current.t = Math.min(walk.current.t, maxT(1));
-      walk.current.target = walk.current.t;
+      const lim = maxT(1);
+      if (walk.current.t > lim) {
+        walk.current.t = lim;
+        const p = pointAt(lim);
+        walk.current.x = p.x;
+        walk.current.z = p.z;
+      }
     }
   }, [frontier]);
 
-  // stage transformation moments
+  // biome name toast + action sequence triggers
+  useEffect(() => {
+    const iv = setInterval(() => {
+      const li = landOf(walk.current.t);
+      const title = lands[li]?.title;
+      if (title && title !== biomeLabel) {
+        setBiomeLabel(title);
+        useMithila.getState().setToast(`${title} · ${lands[li].years}`);
+      }
+      const s = useMithila.getState();
+      if (s.phase !== "world") return;
+      // BridgeDash when first entering Bridge of Two
+      if (
+        !s.actionFlags.bridgeDash &&
+        !seqArmed.current.bridge &&
+        s.frontier >= 2 &&
+        walk.current.t >= landT.start(1) &&
+        walk.current.t < landT.start(1) + 0.04
+      ) {
+        seqArmed.current.bridge = true;
+        startSequence("bridge-dash");
+      }
+      // LanternChase at Birthday City threshold
+      if (
+        !s.actionFlags.lanternChase &&
+        !seqArmed.current.lantern &&
+        s.frontier >= 10 &&
+        walk.current.t >= landT.start(9)
+      ) {
+        seqArmed.current.lantern = true;
+        startSequence("lantern-chase");
+      }
+    }, 400);
+    return () => clearInterval(iv);
+  }, [biomeLabel, startSequence]);
+
   useEffect(() => {
     const stage = stageForFrontier(frontier);
     if (stage > shownStage && transformLines[stage]) {
@@ -244,32 +414,44 @@ export default function World() {
         setTransform(line);
         markStageShown(stage);
         setTimeout(() => setTransform(null), 3600);
-      }, 1400); // let the gate open first
+      }, 1400);
       return () => clearTimeout(t);
     }
   }, [frontier, shownStage, markStageShown]);
 
   return (
     <div className="absolute inset-0">
-      <Canvas dpr={[1, 2]} camera={{ fov: 55, near: 0.1, far: 220, position: [0, 4, 8] }} gl={{ antialias: true }}>
+      <Canvas dpr={[1, 2]} camera={{ fov: 55, near: 0.1, far: 240, position: [0, 4, 8] }} gl={{ antialias: true }}>
         <Atmosphere walk={walk} />
-        <Stars radius={100} depth={60} count={1500} factor={2.5} fade speed={0.4} />
+        <Stars radius={100} depth={60} count={1200} factor={2.5} fade speed={0.4} />
         <TapGround walk={walk} />
         <AllLands />
+        <Coins />
+        <Tunnels />
         <Sparks />
         <Controller walk={walk} anim={anim} />
       </Canvas>
 
-      {/* gate prompt */}
+      <VirtualPad />
+      <CoinDoorHints />
+      <CoinPhotoFlash />
+
+      {/* current biome chip */}
+      <div
+        className="absolute top-16 left-1/2 -translate-x-1/2 z-40 pointer-events-none rounded-full px-4 py-1.5 text-xs tracking-[0.2em] uppercase"
+        style={{ background: "rgba(9,11,34,0.55)", border: "1px solid rgba(240,184,102,0.35)", color: "#f0b866" }}
+      >
+        {biomeLabel || lands[0].title}
+      </div>
+
       {nearGate && frontier < LAND_COUNT && (
-        <div className="absolute bottom-24 left-1/2 -translate-x-1/2 z-40 text-center mithila-rise">
+        <div className="absolute bottom-36 left-1/2 -translate-x-1/2 z-40 text-center mithila-rise">
           <button className="mithila-btn" onClick={() => openTrial(frontier)}>
             open {lands[frontier].gateName} ✦
           </button>
         </div>
       )}
 
-      {/* transformation overlay */}
       {transform && (
         <div
           className="absolute inset-0 z-50 flex items-center justify-center pointer-events-none"

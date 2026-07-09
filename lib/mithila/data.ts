@@ -1,16 +1,7 @@
 // ============================================================
 // THE LONG WALK HOME — all editable content lives here.
-// Sanjay: tweak land names, plaque lines, riddle wording,
-// captions, two-truths statements, and the finale letter freely.
+// Gate trials are photo + music games only (see docs/mithila/SHIP.md).
 // ============================================================
-
-export type RiddlePuzzle = {
-  type: "riddle";
-  badge: "wife" | "mom" | "both";
-  prompt: string;
-  answers: string[];
-  hints: [string, string];
-};
 
 export type SongGuessPuzzle = {
   type: "song-guess";
@@ -28,21 +19,63 @@ export type ZoomPlacePuzzle = {
   prompt: string;
 };
 
-export type BlockPuzzle = { type: "block-puzzle" };
+export type BeatTapPuzzle = {
+  type: "beat-tap";
+  /** expected taps; timing is forgiving */
+  beats: number;
+  /** BPM used to space expected taps */
+  bpm: number;
+  /** how many correct taps needed to pass */
+  need: number;
+};
 
-export type TwoTruthsPuzzle = {
-  type: "two-truths";
-  statements: [string, string, string];
-  fakeIndex: number;
+export type MemoryFlipPuzzle = {
+  type: "memory-flip";
+  /** photo srcs — each appears twice on the board */
+  photos: string[];
+};
+
+export type WhichEraPuzzle = {
+  type: "which-era";
+  options: { label: string; sub: string }[];
+  correctIndex: number;
+};
+
+export type StripShufflePuzzle = {
+  type: "strip-shuffle";
+  photo: string;
+  /** number of horizontal strips */
+  strips: number;
+};
+
+export type OddOneOutPuzzle = {
+  type: "odd-one-out";
+  photos: string[];
+  oddIndex: number;
+  prompt: string;
+};
+
+export type MedleyScrubPuzzle = {
+  type: "medley-scrub";
+  /** seconds into medley.mp3 to start */
+  startSec: number;
+  /** snippet length */
+  durationSec: number;
+  options: string[];
+  correctIndex: number;
+  hint: string;
 };
 
 export type Puzzle =
-  | RiddlePuzzle
   | SongGuessPuzzle
   | JigsawPuzzle
   | ZoomPlacePuzzle
-  | BlockPuzzle
-  | TwoTruthsPuzzle;
+  | BeatTapPuzzle
+  | MemoryFlipPuzzle
+  | WhichEraPuzzle
+  | StripShufflePuzzle
+  | OddOneOutPuzzle
+  | MedleyScrubPuzzle;
 
 export type Land = {
   id: string;
@@ -51,16 +84,15 @@ export type Land = {
   years: string;
   places: string[];
   intro: string;
-  gateName: string; // shown on the locked gate
-  // theme palette (time of day moves dawn -> night across lands)
+  gateName: string;
   sky: string;
   ground: string;
   accent: string;
   fog: string;
-  puzzle: Puzzle | null; // null = gate open (tutorial land)
+  puzzle: Puzzle | null;
   photos: { src: string; caption?: string }[];
-  song: { src: string; title: string }; // used by song-guess snippets
-  plaques: string[]; // tappable prop lines — sneak inside jokes in here
+  song: { src: string; title: string };
+  plaques: string[];
 };
 
 const P = "/mithila/photos/";
@@ -92,7 +124,7 @@ export const lands: Land[] = [
     ground: "#8a6f5c",
     accent: "#ff8f66",
     fog: "#ffd9b8",
-    puzzle: null, // tutorial land — the arch stands open
+    puzzle: null,
     photos: [{ src: P + "IMG_20141213_222149.webp" }],
     song: { src: A + "ch01.mp3", title: "Hey There Delilah" },
     plaques: [
@@ -113,14 +145,7 @@ export const lands: Land[] = [
     ground: "#7d8a5c",
     accent: "#5cb8a8",
     fog: "#ffe9b8",
-    puzzle: {
-      type: "riddle",
-      badge: "wife",
-      prompt:
-        "I belong to two people equally.\nSomehow, one of them gets 90% of me\nevery single night.\nWhat am I?",
-      answers: ["blanket", "the blanket", "bedsheet", "duvet", "comforter", "quilt", "poduva"],
-      hints: ["It's a nightly battle.", "One of you wakes up cold. It isn't you."],
-    },
+    puzzle: { type: "beat-tap", beats: 8, bpm: 100, need: 5 },
     photos: [
       { src: P + "IMG_20150124_225459.webp" },
       { src: P + "IMG_20150329_175107.webp" },
@@ -174,12 +199,12 @@ export const lands: Land[] = [
     accent: "#f0b866",
     fog: "#d8ecff",
     puzzle: {
-      type: "riddle",
-      badge: "wife",
-      prompt:
-        "No matter what the map app says,\nno matter what the recipe says,\nno matter what he remembers —\nthe husband is always this.",
-      answers: ["wrong", "always wrong", "incorrect", "mistaken"],
-      hints: ["A one-word universal truth of marriage.", "The opposite of what he thinks he is."],
+      type: "memory-flip",
+      photos: [
+        P + "IMG_20170414_165807.webp",
+        P + "IMG_20170416_095126.webp",
+        P + "IMG_20170528_192310.webp",
+      ],
     },
     photos: [
       { src: P + "IMG_20170414_165807.webp" },
@@ -238,12 +263,14 @@ export const lands: Land[] = [
     accent: "#b8c8ff",
     fog: "#9aa8d8",
     puzzle: {
-      type: "riddle",
-      badge: "mom",
-      prompt:
-        "I am the only alarm clock\nthat works before sunrise,\nhas no snooze button,\nand is somehow adorable.\nWhat am I?",
-      answers: ["baby", "the baby", "rudra", "my baby", "kid", "daughter", "my daughter"],
-      hints: ["Arrived 11/11.", "You named this alarm clock Rudra."],
+      type: "which-era",
+      options: [
+        { label: "The First City", sub: "2012 – 2014 · strangers & sunrise" },
+        { label: "Wedding Ghat", sub: "2016 · Chennai promises" },
+        { label: "The Quiet Valley", sub: "2019 – 2022 · then there were three" },
+        { label: "The Airport of Us", sub: "2024 · the travel year" },
+      ],
+      correctIndex: 2,
     },
     photos: [{ src: P + "IMG_20221016_100520.webp", caption: "And then there were three" }],
     song: { src: A + "ch06.mp3", title: "Knockin' on Heaven's Door" },
@@ -259,13 +286,17 @@ export const lands: Land[] = [
     title: "Bloom Gardens",
     years: "2023",
     places: ["Everywhere, together"],
-    intro: "This gate is guarded by an actual puzzle. Sorry. (Not sorry.)",
+    intro: "A garden of memories — piece one back together to open the vault.",
     gateName: "The Puzzle Vault",
     sky: "#5c6fb8",
     ground: "#4f7a5c",
     accent: "#e8788a",
     fog: "#7a8ecc",
-    puzzle: { type: "block-puzzle" },
+    puzzle: {
+      type: "strip-shuffle",
+      photo: P + "IMG_20231111_182545843.webp",
+      strips: 4,
+    },
     photos: [
       { src: P + "IMG_20230807_201839956.webp" },
       { src: P + "IMG_20230810_174442615.webp" },
@@ -334,20 +365,22 @@ export const lands: Land[] = [
     title: "Yesterday Lane",
     years: "2025",
     places: ["So close you can still hear it"],
-    intro: "Three memories. One of them never happened.",
+    intro: "Four frames. One of them wandered in from another year.",
     gateName: "Photo-Booth Curtain",
     sky: "#2a3163",
     ground: "#3f4463",
     accent: "#f0b866",
     fog: "#3f4a8a",
     puzzle: {
-      type: "two-truths",
-      statements: [
-        "We watched a sunset and stayed until the streetlights came on.",
-        "We adopted a llama and named him Kevin.",
-        "We ate far too much at a celebration and regretted nothing.",
+      type: "odd-one-out",
+      prompt: "Three belong to this lane. Tap the stranger.",
+      photos: [
+        P + "IMG_20250105_210640278.webp",
+        P + "IMG_20250725_215537525.webp",
+        P + "mithila-chennai-20160530.webp", // wedding — odd one
+        P + "IMG20251206204057.webp",
       ],
-      fakeIndex: 1,
+      oddIndex: 2,
     },
     photos: [
       { src: P + "IMG_20250105_210640278.webp" },
@@ -376,19 +409,25 @@ export const lands: Land[] = [
     title: "Birthday City",
     years: "2026",
     places: ["Right here", "Right now"],
-    intro: "The last gate. One more answer and the city is yours.",
+    intro: "One last song from the long walk. Name the chapter.",
     gateName: "The Golden Doors",
     sky: "#12142e",
     ground: "#2a2f4f",
     accent: "#f0b866",
     fog: "#1a1e3f",
+    // medley ≈ 10 × 60s chapters; ch03 (Nothing Else Matters / wedding) ~120s
     puzzle: {
-      type: "riddle",
-      badge: "both",
-      prompt:
-        "Once a year I arrive with fire on my head,\nI make everyone sing off-key,\nand this year I brought you 36 reasons to smile.\nWhat am I?",
-      answers: ["birthday", "happy birthday", "birthday cake", "cake", "36", "thirty six", "thirtysix", "your birthday"],
-      hints: ["Fire on my head = candles.", "It's today. Well… it's the whole point of all this."],
+      type: "medley-scrub",
+      startSec: 125,
+      durationSec: 6,
+      options: [
+        "Hey There Delilah",
+        "Nothing Else Matters",
+        "Someday — Flipside",
+        "Smack That — Akon",
+      ],
+      correctIndex: 1,
+      hint: "Temple doors. Marigolds. That morning.",
     },
     photos: [
       { src: P + "IMG20260124183005.webp" },
@@ -412,38 +451,57 @@ export const lands: Land[] = [
   },
 ];
 
-// ---------- block puzzle (gate 7) — BFS-verified, 27 moves minimum ----------
-export const blockPuzzleConfig: { r: number; c: number; l: number; o: "H" | "V" }[] = [
-  { r: 2, c: 0, l: 2, o: "H" }, // hero
-  { r: 1, c: 5, l: 3, o: "V" },
-  { r: 5, c: 3, l: 2, o: "H" },
-  { r: 2, c: 2, l: 3, o: "V" },
-  { r: 0, c: 3, l: 2, o: "H" },
-  { r: 0, c: 0, l: 2, o: "H" },
-  { r: 1, c: 3, l: 3, o: "V" },
-  { r: 4, c: 4, l: 2, o: "H" },
-  { r: 4, c: 0, l: 2, o: "V" },
-];
-
 // ---------- finale ----------
 export const finale = {
   name: "MITHILA",
   age: 36,
   birthday: "25 · 07 · 2026",
   song: { src: A + "finale.mp3", title: "Good Riddance (Time of Your Life) — Green Day" },
-  // SANJAY: replace with your real letter. One string per line; "" = blank line.
+  // SANJAY: replace with your real letter before birthday.
   letter: [
     "Dear Mithila,",
     "",
-    "(Sanjay — your letter goes here.)",
-    "(Edit lib/mithila/data.ts → finale.letter)",
+    "You walked every road in this little world —",
+    "the bridges, the gardens, the quiet valleys.",
+    "I built them so you could feel what I feel",
+    "every time I look at you: home.",
     "",
     "Happy 36th birthday.",
+    "The long walk was always toward you.",
+    "",
     "— S",
   ],
-  // shown in Birthday City if she collects all 36 sparks
-  sparkSecret: "(Sanjay: secret message for collecting all 36 sparks — edit me!)",
+  sparkSecret:
+    "36 sparks. 36 reasons. One truth: I still choose you, every morning, every city, every song.",
 };
 
 export const medleySrc = A + "medley.mp3";
 export const TOTAL_SPARKS = 36;
+
+/** Flat list of every photo in the journey, tagged by biome — for the end gallery. */
+export type GalleryPhoto = {
+  src: string;
+  caption?: string;
+  landTitle: string;
+  years: string;
+  landIndex: number;
+};
+
+export function allGalleryPhotos(): GalleryPhoto[] {
+  const out: GalleryPhoto[] = [];
+  const seen = new Set<string>();
+  for (const land of lands) {
+    for (const p of land.photos) {
+      if (seen.has(p.src)) continue;
+      seen.add(p.src);
+      out.push({
+        src: p.src,
+        caption: p.caption,
+        landTitle: land.title,
+        years: land.years,
+        landIndex: land.index,
+      });
+    }
+  }
+  return out;
+}

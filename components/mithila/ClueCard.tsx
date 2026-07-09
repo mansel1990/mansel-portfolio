@@ -1,23 +1,19 @@
 "use client";
 
-import { useState } from "react";
 import { motion } from "framer-motion";
 import type { Land } from "@/lib/mithila/data";
-import { matchAnswer } from "@/lib/mithila/fuzzy";
 import { useMithila } from "@/lib/mithila/store";
 import { sfx } from "./audio";
 import { X } from "lucide-react";
 import SongGuess from "./minigames/SongGuess";
 import Jigsaw from "./minigames/Jigsaw";
 import ZoomPlace from "./minigames/ZoomPlace";
-import BlockPuzzleGame from "./minigames/BlockPuzzleGame";
-import TwoTruths from "./minigames/TwoTruths";
-
-const wrongLines = [
-  "Not quite… the gate leans in closer.",
-  "Hmm. Try once more — you're warmer.",
-  "The door giggles. One more try?",
-];
+import BeatTap from "./minigames/BeatTap";
+import MemoryFlip from "./minigames/MemoryFlip";
+import WhichEra from "./minigames/WhichEra";
+import StripShuffle from "./minigames/StripShuffle";
+import OddOneOut from "./minigames/OddOneOut";
+import MedleyScrub from "./minigames/MedleyScrub";
 
 export default function ClueCard({ land }: { land: Land }) {
   const solveTrial = useMithila((s) => s.solveTrial);
@@ -76,69 +72,23 @@ function PuzzleBody({ land, onSolve }: { land: Land; onSolve: () => void }) {
   const p = land.puzzle;
   if (!p) return null;
   switch (p.type) {
-    case "riddle":
-      return <Riddle puzzle={p} onSolve={onSolve} />;
     case "song-guess":
       return <SongGuess puzzle={p} song={land.song} onSolve={onSolve} />;
     case "jigsaw":
       return <Jigsaw photo={p.photo} onSolve={onSolve} />;
     case "zoom-place":
       return <ZoomPlace puzzle={p} onSolve={onSolve} />;
-    case "block-puzzle":
-      return <BlockPuzzleGame onSolve={onSolve} />;
-    case "two-truths":
-      return <TwoTruths puzzle={p} onSolve={onSolve} />;
+    case "beat-tap":
+      return <BeatTap puzzle={p} song={land.song} onSolve={onSolve} />;
+    case "memory-flip":
+      return <MemoryFlip puzzle={p} onSolve={onSolve} />;
+    case "which-era":
+      return <WhichEra puzzle={p} song={land.song} onSolve={onSolve} />;
+    case "strip-shuffle":
+      return <StripShuffle puzzle={p} onSolve={onSolve} />;
+    case "odd-one-out":
+      return <OddOneOut puzzle={p} onSolve={onSolve} />;
+    case "medley-scrub":
+      return <MedleyScrub puzzle={p} onSolve={onSolve} />;
   }
-}
-
-function Riddle({
-  puzzle,
-  onSolve,
-}: {
-  puzzle: Extract<NonNullable<Land["puzzle"]>, { type: "riddle" }>;
-  onSolve: () => void;
-}) {
-  const [value, setValue] = useState("");
-  const [wrong, setWrong] = useState(0);
-  const [shiver, setShiver] = useState(false);
-
-  const badgeText =
-    puzzle.badge === "wife" ? "one for the wife" : puzzle.badge === "mom" ? "one for the mom" : "for the wife & the mom";
-
-  const submit = () => {
-    if (matchAnswer(value, puzzle.answers)) onSolve();
-    else {
-      setWrong((w) => w + 1);
-      setShiver(true);
-      setTimeout(() => setShiver(false), 500);
-    }
-  };
-
-  return (
-    <div className={`text-center ${shiver ? "mithila-shiver" : ""}`}>
-      <span className="mithila-badge mb-5">{badgeText}</span>
-      <p className="whitespace-pre-line italic text-lg leading-relaxed my-6" style={{ opacity: 0.95 }}>
-        {puzzle.prompt}
-      </p>
-      <input
-        className="mithila-input"
-        value={value}
-        onChange={(e) => setValue(e.target.value)}
-        onKeyDown={(e) => e.key === "Enter" && submit()}
-        placeholder="your answer…"
-        autoComplete="off"
-        autoCapitalize="off"
-      />
-      <button className="mithila-btn mt-5 w-full" onClick={submit}>
-        open the gate
-      </button>
-      {wrong > 0 && (
-        <p className="mt-5 text-sm italic" style={{ opacity: 0.7 }}>
-          {wrong === 1 && wrongLines[0]}
-          {wrong === 2 && `Hint: ${puzzle.hints[0]}`}
-          {wrong >= 3 && `Bigger hint: ${puzzle.hints[1]}`}
-        </p>
-      )}
-    </div>
-  );
 }

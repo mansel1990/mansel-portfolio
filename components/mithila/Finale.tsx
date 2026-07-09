@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { finale, lands } from "@/lib/mithila/data";
 import { useMithila } from "@/lib/mithila/store";
@@ -246,12 +247,20 @@ export default function Finale() {
                 </motion.p>
               ))}
               {lineCount >= finale.letter.length && (
-                <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 1.5, duration: 1.5 }}>
-                  <p className="mt-8 text-xs tracking-[0.4em] uppercase" style={{ opacity: 0.5 }}>
+                <motion.div
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 1.5, duration: 1.5 }}
+                  className="flex flex-col items-center gap-3 mt-8"
+                >
+                  <p className="text-xs tracking-[0.4em] uppercase" style={{ opacity: 0.5 }}>
                     {finale.birthday}
                   </p>
-                  <button className="mithila-btn-ghost mt-6" onClick={setFinaleSeen}>
-                    return to your city ✦
+                  <Link href="/mithila/gallery" className="mithila-btn mt-2">
+                    view all our photos ✦
+                  </Link>
+                  <button className="mithila-btn-ghost" onClick={setFinaleSeen}>
+                    return to your city
                   </button>
                 </motion.div>
               )}

@@ -104,10 +104,11 @@ export function buildSparks(): SparkDef[] {
   const out: SparkDef[] = [];
   counts.forEach((count, land) => {
     for (let k = 0; k < count; k++) {
-      const t = landT.start(land) + ((k + 0.6) / (count + 0.8)) / LAND_COUNT;
-      const side = (k % 2 === 0 ? 1 : -1) * (2.5 + ((land * 7 + k * 13) % 40) / 12);
+      const t = landT.start(land) + ((k + 0.55) / (count + 0.5)) / LAND_COUNT;
+      // keep near the path so walk/stick auto-pickup is easy
+      const side = (k % 2 === 0 ? 1 : -1) * (1.4 + (k % 3) * 0.45);
       const p = sideAt(t, side);
-      p.y = 0.9 + ((land + k) % 3) * 0.5;
+      p.y = 0.85;
       out.push({ id: `s${land}-${k}`, pos: p, land });
     }
   });

@@ -1,10 +1,108 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import Link from "next/link";
 import { motion, AnimatePresence } from "framer-motion";
 import { lands, TOTAL_SPARKS, finale } from "@/lib/mithila/data";
+import { TOTAL_COINS } from "@/lib/mithila/collectibles";
 import { useMithila } from "@/lib/mithila/store";
-import { Map, Menu as MenuIcon, Volume2, VolumeX, X, Sparkles, RotateCcw } from "lucide-react";
+import { mithilaInput } from "@/lib/mithila/input";
+import { Map, Menu as MenuIcon, Volume2, VolumeX, X, Sparkles, RotateCcw, Images } from "lucide-react";
+
+/** On-screen stick + jump for free biome movement */
+export function VirtualPad() {
+  const phase = useMithila((s) => s.phase);
+  const base = useRef<HTMLDivElement>(null);
+  const [knob, setKnob] = useState({ x: 0, y: 0 });
+  const active = useRef(false);
+
+  useEffect(() => {
+    return () => {
+      mithilaInput.x = 0;
+      mithilaInput.y = 0;
+    };
+  }, []);
+
+  if (phase !== "world") return null;
+
+  const setFromPoint = (clientX: number, clientY: number) => {
+    const el = base.current;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    const cx = r.left + r.width / 2;
+    const cy = r.top + r.height / 2;
+    let dx = clientX - cx;
+    let dy = clientY - cy;
+    const max = r.width * 0.38;
+    const len = Math.hypot(dx, dy) || 1;
+    if (len > max) {
+      dx = (dx / len) * max;
+      dy = (dy / len) * max;
+    }
+    setKnob({ x: dx, y: dy });
+    mithilaInput.x = dx / max;
+    mithilaInput.y = -dy / max;
+  };
+
+  const end = () => {
+    active.current = false;
+    setKnob({ x: 0, y: 0 });
+    mithilaInput.x = 0;
+    mithilaInput.y = 0;
+  };
+
+  return (
+    <div className="absolute inset-x-0 bottom-0 z-30 pointer-events-none flex items-end justify-between px-5 pb-6 md:pb-8">
+      <div
+        ref={base}
+        className="pointer-events-auto relative h-[120px] w-[120px] rounded-full touch-none select-none"
+        style={{
+          background: "rgba(9,11,34,0.45)",
+          border: "2px solid rgba(240,184,102,0.35)",
+          boxShadow: "0 0 24px rgba(0,0,0,0.35)",
+        }}
+        onPointerDown={(e) => {
+          active.current = true;
+          (e.target as HTMLElement).setPointerCapture?.(e.pointerId);
+          setFromPoint(e.clientX, e.clientY);
+        }}
+        onPointerMove={(e) => {
+          if (!active.current) return;
+          setFromPoint(e.clientX, e.clientY);
+        }}
+        onPointerUp={end}
+        onPointerCancel={end}
+      >
+        <div
+          className="absolute left-1/2 top-1/2 h-11 w-11 -translate-x-1/2 -translate-y-1/2 rounded-full"
+          style={{
+            transform: `translate(calc(-50% + ${knob.x}px), calc(-50% + ${knob.y}px))`,
+            background: "linear-gradient(135deg,#f0b866,#e8935a)",
+            boxShadow: "0 0 16px rgba(240,184,102,0.45)",
+          }}
+        />
+      </div>
+      <button
+        type="button"
+        aria-label="jump"
+        className="pointer-events-auto mb-2 h-[72px] w-[72px] rounded-full text-xs font-semibold tracking-wider touch-none"
+        style={{
+          background: "linear-gradient(135deg,#f0b866,#e8935a)",
+          color: "#1a1206",
+          boxShadow: "0 0 28px rgba(240,184,102,0.4)",
+          border: "2px solid rgba(255,255,255,0.2)",
+        }}
+        onPointerDown={(e) => {
+          e.preventDefault();
+          mithilaInput.jumpPressed = true;
+          if (navigator.vibrate) navigator.vibrate(10);
+        }}
+      >
+        JUMP
+      </button>
+    </div>
+  );
+}
 
 // ---------- plaque toast ----------
 export function Toast() {
@@ -38,6 +136,7 @@ export function Toast() {
 export function TopBar({ onMap, onMenu }: { onMap: () => void; onMenu: () => void }) {
   const frontier = useMithila((s) => s.frontier);
   const sparks = useMithila((s) => s.sparks);
+  const coins = useMithila((s) => s.coins);
   const muted = useMithila((s) => s.muted);
   const toggleMute = useMithila((s) => s.toggleMute);
   return (
@@ -50,14 +149,26 @@ export function TopBar({ onMap, onMenu }: { onMap: () => void; onMenu: () => voi
           <Map size={16} style={{ color: "#f5f0e8" }} />
         </button>
       </div>
-      <div className="flex items-center gap-3">
-        <div className="flex items-center gap-1.5 rounded-full px-3 py-1.5" style={{ background: "rgba(9,11,34,0.6)", border: "1px solid rgba(245,240,232,0.15)" }}>
-          <Sparkles size={13} style={{ color: "#ffd700" }} />
+      <div className="flex items-center gap-2">
+        <div className="flex items-center gap-1 rounded-full px-2.5 py-1.5" style={{ background: "rgba(9,11,34,0.6)", border: "1px solid rgba(255,215,0,0.35)" }}>
+          <span className="text-xs" style={{ color: "#ffd700" }}>
+            🪙 {coins.length}/{TOTAL_COINS}
+          </span>
+        </div>
+        <div
+          title="Hidden sparks along the road — optional collectibles"
+          className="flex items-center gap-1.5 rounded-full px-2.5 py-1.5"
+          style={{ background: "rgba(9,11,34,0.6)", border: "1px solid rgba(245,240,232,0.15)" }}
+        >
+          <Sparkles size={13} style={{ color: "#c4b5fd" }} />
+          <span className="text-[10px] tracking-wide uppercase" style={{ color: "#c4b5fd", opacity: 0.9 }}>
+            sparks
+          </span>
           <span className="text-xs" style={{ color: "#f5f0e8" }}>
             {sparks.length}/{TOTAL_SPARKS}
           </span>
         </div>
-        <div className="rounded-full px-3 py-1.5 text-xs" style={{ background: "rgba(9,11,34,0.6)", border: "1px solid rgba(245,240,232,0.15)", color: "#f0b866" }}>
+        <div className="rounded-full px-2.5 py-1.5 text-xs" style={{ background: "rgba(9,11,34,0.6)", border: "1px solid rgba(245,240,232,0.15)", color: "#f0b866" }}>
           {frontier}/10
         </div>
         <button aria-label="mute" onClick={toggleMute} className="rounded-full p-3 pointer-events-auto" style={{ background: "rgba(9,11,34,0.6)", border: "1px solid rgba(245,240,232,0.15)" }}>
@@ -186,8 +297,8 @@ export function PauseMenu({ open, onClose }: { open: boolean; onClose: () => voi
             <h3 className="mithila-serif italic text-2xl mb-1" style={{ color: "#f0b866" }}>
               The Long Walk Home
             </h3>
-            <p className="text-xs tracking-[0.25em] uppercase mb-6" style={{ color: "#f5f0e8", opacity: 0.5 }}>
-              sparks found: {sparks.length} / {TOTAL_SPARKS}
+            <p className="text-xs tracking-[0.2em] uppercase mb-6" style={{ color: "#f5f0e8", opacity: 0.5 }}>
+              optional sparks: {sparks.length}/{TOTAL_SPARKS}
             </p>
 
             {confirm === 0 && (
@@ -195,6 +306,13 @@ export function PauseMenu({ open, onClose }: { open: boolean; onClose: () => voi
                 <button className="mithila-btn w-full" onClick={onClose}>
                   keep walking
                 </button>
+                <Link
+                  href="/mithila/gallery"
+                  className="mithila-btn-ghost w-full flex items-center justify-center gap-2"
+                  onClick={onClose}
+                >
+                  <Images size={14} /> our photo gallery
+                </Link>
                 {finaleSeen && (
                   <button
                     className="mithila-btn-ghost w-full"
