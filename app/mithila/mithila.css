@@ -1,0 +1,138 @@
+/* Written in the Stars — scoped styles */
+
+.mithila-serif {
+  font-family: var(--font-cormorant), Georgia, serif;
+}
+
+.mithila-loader {
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: #f0b866;
+  box-shadow: 0 0 24px 6px rgba(240, 184, 102, 0.55);
+  animation: mithila-breathe 1.6s ease-in-out infinite;
+}
+
+@keyframes mithila-breathe {
+  0%, 100% { transform: scale(1); opacity: 0.7; }
+  50% { transform: scale(1.5); opacity: 1; }
+}
+
+@keyframes mithila-twinkle {
+  0%, 100% { opacity: 0.25; }
+  50% { opacity: 1; }
+}
+
+@keyframes mithila-float {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-10px); }
+}
+
+@keyframes mithila-shiver {
+  0%, 100% { transform: translateX(0); }
+  20% { transform: translateX(-6px); }
+  40% { transform: translateX(5px); }
+  60% { transform: translateX(-4px); }
+  80% { transform: translateX(3px); }
+}
+
+.mithila-shiver { animation: mithila-shiver 0.45s ease; }
+
+@keyframes mithila-flame {
+  0%, 100% { transform: scaleY(1) translateY(0); }
+  30% { transform: scaleY(1.15) translateY(-1px); }
+  60% { transform: scaleY(0.92) translateY(0.5px); }
+}
+
+@keyframes mithila-rise {
+  from { opacity: 0; transform: translateY(24px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.mithila-rise { animation: mithila-rise 0.7s cubic-bezier(0.22, 1, 0.36, 1) both; }
+
+.mithila-grain::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.05;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='120' height='120'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='2'/%3E%3C/filter%3E%3Crect width='120' height='120' filter='url(%23n)' opacity='0.6'/%3E%3C/svg%3E");
+}
+
+.mithila-vignette::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 5;
+  background: radial-gradient(ellipse at center, transparent 55%, rgba(3, 4, 12, 0.55) 100%);
+}
+
+.mithila-input {
+  background: rgba(245, 240, 232, 0.06);
+  border: 1px solid rgba(245, 240, 232, 0.22);
+  color: #f5f0e8;
+  border-radius: 12px;
+  padding: 14px 18px;
+  width: 100%;
+  text-align: center;
+  font-size: 17px;
+  letter-spacing: 0.05em;
+  outline: none;
+  transition: border-color 0.3s, box-shadow 0.3s;
+}
+
+.mithila-input:focus {
+  border-color: rgba(240, 184, 102, 0.7);
+  box-shadow: 0 0 0 3px rgba(240, 184, 102, 0.12), 0 0 30px rgba(240, 184, 102, 0.1);
+}
+
+.mithila-btn {
+  background: linear-gradient(135deg, #f0b866, #e8935a);
+  color: #1a1206;
+  font-weight: 600;
+  border-radius: 12px;
+  padding: 13px 30px;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-size: 13px;
+  transition: transform 0.2s, box-shadow 0.3s;
+  box-shadow: 0 4px 24px rgba(240, 184, 102, 0.25);
+}
+
+.mithila-btn:active { transform: scale(0.96); }
+
+.mithila-btn-ghost {
+  background: rgba(245, 240, 232, 0.07);
+  border: 1px solid rgba(245, 240, 232, 0.18);
+  color: rgba(245, 240, 232, 0.85);
+  border-radius: 12px;
+  padding: 12px 24px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  font-size: 12px;
+}
+
+.mithila-card {
+  background: linear-gradient(160deg, rgba(20, 26, 69, 0.92), rgba(9, 11, 34, 0.96));
+  border: 1px solid rgba(240, 184, 102, 0.18);
+  border-radius: 24px;
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.6), inset 0 1px 0 rgba(245, 240, 232, 0.08);
+  backdrop-filter: blur(14px);
+}
+
+.mithila-badge {
+  display: inline-block;
+  font-size: 10px;
+  letter-spacing: 0.25em;
+  text-transform: uppercase;
+  color: #f0b866;
+  border: 1px solid rgba(240, 184, 102, 0.4);
+  border-radius: 999px;
+  padding: 5px 14px;
+}
+
+/* hide scrollbars inside overlays */
+.mithila-noscrollbar::-webkit-scrollbar { display: none; }
+.mithila-noscrollbar { scrollbar-width: none; }
