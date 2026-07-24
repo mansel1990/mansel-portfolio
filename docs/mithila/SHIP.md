@@ -74,7 +74,8 @@ Coins from the **previous** biome open the next gate. Costs: Bridge 5 · Little 
 ### Gallery
 
 - Route: `/mithila/gallery`
-- Linked from finale + pause menu
+- Linked from: Birthday City **Our Photos** board · finale · pause menu
+- Back link returns to Birthday City / walk (progress in `mithila:v3`)
 - Medley continues; Lenis disabled on `/mithila*` so desktop scroll works
 
 ---
@@ -108,6 +109,7 @@ app/mithila/gallery/page.tsx
 
 | Date | Done | Next |
 |------|------|------|
+| 2026-07-24 | Birthday City gallery board + back link | Deploy |
 | 2026-07-09 | Docs refreshed; production build green; ready to push | Deploy + phone QA |
 | 2026-07-09 | Gallery scroll (Lenis off); medley on gallery | — |
 | 2026-07-09 | Spark/coin proximity; photo flash; coin-door count fix | — |

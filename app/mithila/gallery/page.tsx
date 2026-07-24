@@ -79,7 +79,7 @@ export default function MithilaGalleryPage() {
           className="flex items-center gap-2 text-xs tracking-[0.2em] uppercase"
           style={{ color: "#f0b866" }}
         >
-          <ArrowLeft size={14} /> back to the walk
+          <ArrowLeft size={14} /> back to Birthday City
         </Link>
         <div className="text-xs tracking-[0.25em] uppercase" style={{ opacity: 0.55 }}>
           {photos.length} memories

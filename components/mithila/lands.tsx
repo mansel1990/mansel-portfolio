@@ -2,6 +2,7 @@
 
 /* eslint-disable react-hooks/immutability -- R3F game loop: mutating refs/materials in useFrame/handlers is the intended pattern */
 import { useMemo, useRef, useState, Suspense } from "react";
+import Link from "next/link";
 import * as THREE from "three";
 import { useFrame } from "@react-three/fiber";
 import { useTexture, Html } from "@react-three/drei";
@@ -634,6 +635,8 @@ function LandProps({ landIndex }: { landIndex: number }) {
               </mesh>
             </group>
           </Poke>
+          {/* clickable board → full photo gallery (return via "back to Birthday City") */}
+          {unlockedHere && <GalleryBoard position={p(0.55, 5.2)} yaw={yawAt(c)} />}
         </>
       )}
 
@@ -643,6 +646,67 @@ function LandProps({ landIndex }: { landIndex: number }) {
           <Pavilion landIndex={landIndex} />
         </group>
       )}
+    </group>
+  );
+}
+
+/** Wooden memory board in Birthday City — opens /mithila/gallery */
+function GalleryBoard({ position, yaw }: { position: [number, number, number]; yaw: number }) {
+  const mats = useMemo(
+    () => ({
+      wood: flat("#6b4a33"),
+      frame: flat("#f0b866", { emissive: "#f0b866", emissiveIntensity: 0.35 }),
+      panel: flat("#2a1e14"),
+    }),
+    [],
+  );
+  return (
+    <group position={position} rotation={[0, yaw + Math.PI * 0.15, 0]}>
+      {/* posts */}
+      <mesh material={mats.wood} position={[-1.1, 0.9, 0]}>
+        <cylinderGeometry args={[0.07, 0.09, 1.8, 6]} />
+      </mesh>
+      <mesh material={mats.wood} position={[1.1, 0.9, 0]}>
+        <cylinderGeometry args={[0.07, 0.09, 1.8, 6]} />
+      </mesh>
+      {/* board */}
+      <mesh material={mats.panel} position={[0, 1.55, 0.02]}>
+        <boxGeometry args={[2.6, 1.5, 0.12]} />
+      </mesh>
+      <mesh material={mats.frame} position={[0, 1.55, 0.09]}>
+        <boxGeometry args={[2.35, 1.25, 0.04]} />
+      </mesh>
+      {/* mini photo tiles on the board */}
+      {[
+        [-0.55, 0.25],
+        [0.55, 0.25],
+        [-0.55, -0.35],
+        [0.55, -0.35],
+      ].map(([x, y], i) => (
+        <mesh key={i} material={flat(["#e8c8a8", "#c9a44f", "#7a8ecc", "#e8788a"][i])} position={[x, 1.55 + y, 0.12]}>
+          <planeGeometry args={[0.85, 0.5]} />
+        </mesh>
+      ))}
+      <Html position={[0, 2.55, 0.2]} center distanceFactor={11} zIndexRange={[20, 0]}>
+        <Link
+          href="/mithila/gallery"
+          onClick={() => {
+            sfx.tap();
+            if (navigator.vibrate) navigator.vibrate(12);
+          }}
+          className="mithila-serif italic text-sm px-4 py-2 rounded-full whitespace-nowrap"
+          style={{
+            display: "inline-block",
+            background: "rgba(9,11,34,0.85)",
+            border: "2px solid rgba(240,184,102,0.65)",
+            color: "#f0b866",
+            boxShadow: "0 0 20px rgba(240,184,102,0.35)",
+            textDecoration: "none",
+          }}
+        >
+          Our Photos ✦
+        </Link>
+      </Html>
     </group>
   );
 }
