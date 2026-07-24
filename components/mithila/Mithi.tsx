@@ -62,10 +62,10 @@ export function Mithi({ anim, stage }: { anim: React.RefObject<CharAnim>; stage:
     const speed = a.running ? 13 : 8.5;
 
     if (celebrating) {
-      // jump + spin + arms up
+      // jump + gentle twirl + arms up
       const ph = (Date.now() % 700) / 700;
       body.current.position.y = Math.abs(Math.sin(ph * Math.PI)) * 0.35;
-      body.current.rotation.y = t * 6;
+      body.current.rotation.y = t * 2.2;
       if (lArm.current) lArm.current.rotation.z = 2.6;
       if (rArm.current) rArm.current.rotation.z = -2.6;
       if (lLeg.current) lLeg.current.rotation.x = 0;

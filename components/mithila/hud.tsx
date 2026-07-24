@@ -40,8 +40,19 @@ export function VirtualPad() {
       dy = (dy / len) * max;
     }
     setKnob({ x: dx, y: dy });
-    mithilaInput.x = dx / max;
-    mithilaInput.y = -dy / max;
+    // Quadratic response + deadzone — small thumb wobble shouldn't spin her
+    const nx = dx / max;
+    const ny = -dy / max;
+    const mag = Math.hypot(nx, ny);
+    if (mag < 0.18) {
+      mithilaInput.x = 0;
+      mithilaInput.y = 0;
+      return;
+    }
+    const t = (mag - 0.18) / (1 - 0.18);
+    const curved = t * t;
+    mithilaInput.x = (nx / mag) * curved;
+    mithilaInput.y = (ny / mag) * curved;
   };
 
   const end = () => {

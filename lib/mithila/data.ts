@@ -19,14 +19,12 @@ export type ZoomPlacePuzzle = {
   prompt: string;
 };
 
-export type BeatTapPuzzle = {
-  type: "beat-tap";
-  /** expected taps; timing is forgiving */
-  beats: number;
-  /** BPM used to space expected taps */
-  bpm: number;
-  /** how many correct taps needed to pass */
-  need: number;
+/** Match the right half of a photo to complete the memory (mobile-friendly). */
+export type TwoHalvesPuzzle = {
+  type: "two-halves";
+  photo: string;
+  /** wrong right-half options */
+  decoys: string[];
 };
 
 export type MemoryFlipPuzzle = {
@@ -70,7 +68,7 @@ export type Puzzle =
   | SongGuessPuzzle
   | JigsawPuzzle
   | ZoomPlacePuzzle
-  | BeatTapPuzzle
+  | TwoHalvesPuzzle
   | MemoryFlipPuzzle
   | WhichEraPuzzle
   | StripShufflePuzzle
@@ -145,7 +143,11 @@ export const lands: Land[] = [
     ground: "#7d8a5c",
     accent: "#5cb8a8",
     fog: "#ffe9b8",
-    puzzle: { type: "beat-tap", beats: 8, bpm: 100, need: 5 },
+    puzzle: {
+      type: "two-halves",
+      photo: P + "IMG_20150329_175107.webp",
+      decoys: [P + "IMG_20150124_225459.webp", P + "IMG_20150614_220813.webp"],
+    },
     photos: [
       { src: P + "IMG_20150124_225459.webp" },
       { src: P + "IMG_20150329_175107.webp" },
@@ -457,19 +459,19 @@ export const finale = {
   age: 36,
   birthday: "25 · 07 · 2026",
   song: { src: A + "finale.mp3", title: "Good Riddance (Time of Your Life) — Green Day" },
-  // SANJAY: replace with your real letter before birthday.
   letter: [
-    "Dear Mithila,",
+    "It's been 10 years of togetherness —",
+    "a decade of ordinary mornings and nights,",
+    "of cities we grew into,",
+    "adventures we took side by side,",
+    "and a love that kept finding its way home.",
     "",
-    "You walked every road in this little world —",
-    "the bridges, the gardens, the quiet valleys.",
-    "I built them so you could feel what I feel",
-    "every time I look at you: home.",
+    "So many memories already made.",
+    "So many more still waiting for us.",
     "",
-    "Happy 36th birthday.",
-    "The long walk was always toward you.",
+    "Have a wonderful birthday.",
     "",
-    "— S",
+    "— Mansel",
   ],
   sparkSecret:
     "36 sparks. 36 reasons. One truth: I still choose you, every morning, every city, every song.",

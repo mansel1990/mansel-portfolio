@@ -256,7 +256,11 @@ export default function Finale() {
                   <p className="text-xs tracking-[0.4em] uppercase" style={{ opacity: 0.5 }}>
                     {finale.birthday}
                   </p>
-                  <Link href="/mithila/gallery" className="mithila-btn mt-2">
+                  <Link
+                    href="/mithila/gallery"
+                    className="mithila-btn mt-2"
+                    onClick={() => setFinaleSeen()}
+                  >
                     view all our photos ✦
                   </Link>
                   <button className="mithila-btn-ghost" onClick={setFinaleSeen}>

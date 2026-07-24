@@ -17,7 +17,13 @@ export default function LanternChase() {
   const [fails, setFails] = useState(0);
   const [running, setRunning] = useState(true);
   const [won, setWon] = useState(false);
-  const [spots, setSpots] = useState<{ id: number; x: number; y: number }[]>([]);
+  const [spots, setSpots] = useState(() =>
+    Array.from({ length: 4 }, (_, i) => ({
+      id: i + 1,
+      x: 12 + Math.random() * 76,
+      y: 18 + Math.random() * 50,
+    })),
+  );
 
   const spawn = () => {
     setSpots(
@@ -28,10 +34,6 @@ export default function LanternChase() {
       })),
     );
   };
-
-  useEffect(() => {
-    if (running) spawn();
-  }, [running]);
 
   useEffect(() => {
     if (!running || won) return;
@@ -135,6 +137,7 @@ export default function LanternChase() {
               onClick={() => {
                 setGot(0);
                 setLeft(DURATION);
+                spawn();
                 setRunning(true);
               }}
             >

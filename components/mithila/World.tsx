@@ -45,6 +45,16 @@ const JUMP_V = 5.2;
 const GRAVITY = 18;
 const MOVE_SPEED = 7.5;
 const RUN_MULT = 1.55;
+const TURN_RATE = 2.6; // rad/s — caps how fast facing snaps (stops mobile spin)
+const CAM_FOLLOW = 1.6; // how quickly chase-cam yaw trails the character
+const MEMORY_SPEED = 0.22; // slow walk while a coin-memory flash is open
+
+function shortestAngle(from: number, to: number) {
+  let d = to - from;
+  while (d > Math.PI) d -= Math.PI * 2;
+  while (d < -Math.PI) d += Math.PI * 2;
+  return d;
+}
 
 // ---------- atmosphere: sky/fog/light lerp with position ----------
 function Atmosphere({ walk }: { walk: React.RefObject<Walk> }) {
@@ -95,6 +105,9 @@ function Controller({ walk, anim }: { walk: React.RefObject<Walk>; anim: React.R
   const lookAt = useMemo(() => new THREE.Vector3(), []);
   const pads = useMemo(() => biomePads(), []);
   const keys = useRef({ w: false, a: false, s: false, d: false, space: false });
+  // Stable camera yaw — move relative to this, not the live camera, so stick + chase-cam
+  // can't feed each other into a spin on mobile.
+  const camYaw = useRef(0);
 
   useEffect(() => {
     const on = (e: KeyboardEvent, v: boolean) => {
@@ -123,6 +136,17 @@ function Controller({ walk, anim }: { walk: React.RefObject<Walk>; anim: React.R
     const s = useMithila.getState();
     const d = Math.min(delta, 0.05);
     const active = s.phase === "world";
+    const memoryOpen = !!s.coinPhoto;
+    const speedScale = memoryOpen ? MEMORY_SPEED : 1;
+
+    // Freeze leftover stick/tap intent while any overlay owns the screen
+    if (!active) {
+      w.tapX = null;
+      w.tapZ = null;
+      w.running = false;
+      mithilaInput.x = 0;
+      mithilaInput.y = 0;
+    }
 
     // fast travel → snap to land center
     if (s.travelTo !== null) {
@@ -133,37 +157,42 @@ function Controller({ walk, anim }: { walk: React.RefObject<Walk>; anim: React.R
       w.tapX = null;
       w.tapZ = null;
       w.running = false;
+      camYaw.current = w.yaw;
       s.consumeTravel();
     }
 
     let ix = mithilaInput.x + (keys.current.d ? 1 : 0) - (keys.current.a ? 1 : 0);
     let iy = mithilaInput.y + (keys.current.w ? 1 : 0) - (keys.current.s ? 1 : 0);
+    // Soften lateral stick — sideways is what feeds the old spin loop on touch pads
+    ix *= 0.72;
     const stickLen = Math.hypot(ix, iy);
     if (stickLen > 1) {
       ix /= stickLen;
       iy /= stickLen;
     }
 
-    // camera-relative move (XZ)
-    const forward = new THREE.Vector3();
-    camera.getWorldDirection(forward);
-    forward.y = 0;
-    if (forward.lengthSq() < 1e-6) forward.set(0, 0, -1);
-    else forward.normalize();
-    const right = new THREE.Vector3().crossVectors(forward, new THREE.Vector3(0, 1, 0)).normalize();
+    // Move relative to lagged camera yaw (not live camera look — breaks spin feedback)
+    const cy = camYaw.current;
+    const fwdX = Math.sin(cy);
+    const fwdZ = Math.cos(cy);
+    const rightX = -Math.cos(cy);
+    const rightZ = Math.sin(cy);
 
     let mx = 0;
     let mz = 0;
-    if (active && stickLen > 0.08) {
+    if (active && stickLen > 0.12) {
       w.tapX = null;
       w.tapZ = null;
-      const speed = MOVE_SPEED * (stickLen > 0.85 ? RUN_MULT : 1);
-      const dirX = right.x * ix + forward.x * iy;
-      const dirZ = right.z * ix + forward.z * iy;
+      const speed = MOVE_SPEED * speedScale * (stickLen > 0.85 && !memoryOpen ? RUN_MULT : 1);
+      const dirX = rightX * ix + fwdX * iy;
+      const dirZ = rightZ * ix + fwdZ * iy;
       mx = dirX * speed * d;
       mz = dirZ * speed * d;
-      w.yaw = Math.atan2(dirX, dirZ);
-      w.running = stickLen > 0.85;
+      const targetYaw = Math.atan2(dirX, dirZ);
+      const turn = shortestAngle(w.yaw, targetYaw);
+      const maxTurn = TURN_RATE * d;
+      w.yaw += Math.max(-maxTurn, Math.min(maxTurn, turn));
+      w.running = stickLen > 0.85 && !memoryOpen;
     } else if (active && w.tapX !== null && w.tapZ !== null) {
       const dx = w.tapX - w.x;
       const dz = w.tapZ - w.z;
@@ -173,18 +202,21 @@ function Controller({ walk, anim }: { walk: React.RefObject<Walk>; anim: React.R
         w.tapZ = null;
         w.running = false;
       } else {
-        const speed = MOVE_SPEED * (w.running ? RUN_MULT : 1);
+        const speed = MOVE_SPEED * speedScale * (w.running && !memoryOpen ? RUN_MULT : 1);
         const step = Math.min(dist, speed * d);
         mx = (dx / dist) * step;
         mz = (dz / dist) * step;
-        w.yaw = Math.atan2(dx, dz);
+        const targetYaw = Math.atan2(dx, dz);
+        const turn = shortestAngle(w.yaw, targetYaw);
+        const maxTurn = TURN_RATE * d;
+        w.yaw += Math.max(-maxTurn, Math.min(maxTurn, turn));
       }
     } else {
       w.running = false;
     }
 
     // jump
-    if (active && w.y <= 0.01 && consumeJump()) {
+    if (active && !memoryOpen && w.y <= 0.01 && consumeJump()) {
       w.vy = JUMP_V;
       sfx.tap();
     }
@@ -195,8 +227,8 @@ function Controller({ walk, anim }: { walk: React.RefObject<Walk>; anim: React.R
       w.vy = 0;
     }
 
-    let nx = w.x + mx;
-    let nz = w.z + mz;
+    const nx = w.x + mx;
+    const nz = w.z + mz;
     const clamped = clampToBiomes(nx, nz, s.frontier, pads);
     w.x = clamped.x;
     w.z = clamped.z;
@@ -215,7 +247,7 @@ function Controller({ walk, anim }: { walk: React.RefObject<Walk>; anim: React.R
     if (mithiRef.current) {
       mithiRef.current.position.set(w.x, w.y, w.z);
       const cur = mithiRef.current.rotation.y;
-      mithiRef.current.rotation.y = cur + (w.yaw - cur) * Math.min(1, d * 10);
+      mithiRef.current.rotation.y = cur + shortestAngle(cur, w.yaw) * Math.min(1, d * 8);
     }
 
     if (rudraRef.current) {
@@ -228,11 +260,23 @@ function Controller({ walk, anim }: { walk: React.RefObject<Walk>; anim: React.R
       rudraRef.current.rotation.y = w.yaw;
     }
 
-    // chase cam
-    const back = new THREE.Vector3(w.x - Math.sin(w.yaw) * 6.8, 4.4 + w.y * 0.3, w.z - Math.cos(w.yaw) * 6.8);
+    // Chase cam trails character yaw slowly — keeps look stable while turning
+    camYaw.current += shortestAngle(camYaw.current, w.yaw) * Math.min(1, d * CAM_FOLLOW);
+    const back = new THREE.Vector3(
+      w.x - Math.sin(camYaw.current) * 6.8,
+      4.4 + w.y * 0.3,
+      w.z - Math.cos(camYaw.current) * 6.8,
+    );
     camPos.lerp(back, Math.min(1, d * 2.4));
     camera.position.copy(camPos);
-    lookAt.lerp(new THREE.Vector3(w.x + Math.sin(w.yaw) * 2.5, 1.2 + w.y, w.z + Math.cos(w.yaw) * 2.5), Math.min(1, d * 3));
+    lookAt.lerp(
+      new THREE.Vector3(
+        w.x + Math.sin(camYaw.current) * 2.5,
+        1.2 + w.y,
+        w.z + Math.cos(camYaw.current) * 2.5,
+      ),
+      Math.min(1, d * 3),
+    );
     camera.lookAt(lookAt);
 
     const li = landOf(w.t);

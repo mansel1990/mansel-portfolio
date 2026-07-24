@@ -50,15 +50,41 @@ export default function MithilaApp() {
     if (unlocked && phase === "gate") setPhase("world");
   }, [hydrated, unlocked, phase, setPhase]);
 
+  // Returning from /mithila/gallery (or a refresh mid-overlay) should never re-open finale/trials
+  useEffect(() => {
+    if (!hydrated || !unlocked) return;
+    const overlay =
+      phase === "finale" ||
+      phase === "trial" ||
+      phase === "gallery" ||
+      phase === "side-game" ||
+      phase === "sequence";
+    if (overlay) {
+      // Visiting the photo gallery from the finale counts as finishing it
+      if (phase === "finale") useMithila.getState().setFinaleSeen();
+      else setPhase("world");
+    }
+  }, [hydrated]); // eslint-disable-line react-hooks/exhaustive-deps -- mount-only settle
+
   useEffect(() => {
     audio.setMuted(muted);
   }, [muted]);
 
   useEffect(() => {
-    if (phase === "world" && unlocked && useMithila.getState().finaleSeen) {
+    if (phase === "world" && unlocked) {
       audio.playMusic(medleySrc, { loop: true, volume: 0.75 });
     }
   }, [phase, unlocked]);
+
+  // Duck BGM only during interactive games — never while walking / gallery / finale
+  useEffect(() => {
+    const inGame = phase === "trial" || phase === "side-game" || phase === "sequence";
+    audio.duckMusic(inGame);
+    return () => {
+      // Leaving a game (or unmount) always restores full walking volume
+      if (inGame) audio.duckMusic(false);
+    };
+  }, [phase]);
 
   // Don't stopAll on unmount — navigating to /mithila/gallery should keep the medley.
 

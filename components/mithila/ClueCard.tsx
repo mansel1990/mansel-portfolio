@@ -8,7 +8,7 @@ import { X } from "lucide-react";
 import SongGuess from "./minigames/SongGuess";
 import Jigsaw from "./minigames/Jigsaw";
 import ZoomPlace from "./minigames/ZoomPlace";
-import BeatTap from "./minigames/BeatTap";
+import TwoHalves from "./minigames/TwoHalves";
 import MemoryFlip from "./minigames/MemoryFlip";
 import WhichEra from "./minigames/WhichEra";
 import StripShuffle from "./minigames/StripShuffle";
@@ -78,8 +78,8 @@ function PuzzleBody({ land, onSolve }: { land: Land; onSolve: () => void }) {
       return <Jigsaw photo={p.photo} onSolve={onSolve} />;
     case "zoom-place":
       return <ZoomPlace puzzle={p} onSolve={onSolve} />;
-    case "beat-tap":
-      return <BeatTap puzzle={p} song={land.song} onSolve={onSolve} />;
+    case "two-halves":
+      return <TwoHalves puzzle={p} onSolve={onSolve} />;
     case "memory-flip":
       return <MemoryFlip puzzle={p} onSolve={onSolve} />;
     case "which-era":

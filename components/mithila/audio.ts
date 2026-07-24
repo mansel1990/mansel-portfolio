@@ -6,6 +6,9 @@ type Slot = { el: HTMLAudioElement | null; target: number };
 const music: Slot = { el: null, target: 0 };
 const ambient: Slot = { el: null, target: 0 };
 let muted = false;
+/** Duck is applied only in tick() — music.target always stays the real walking volume. */
+let musicDucked = false;
+const MUSIC_DUCK = 0.14;
 let raf = 0;
 
 function tick() {
@@ -13,9 +16,13 @@ function tick() {
   let busy = false;
   for (const s of [music, ambient]) {
     if (!s.el) continue;
-    const goal = muted ? 0 : s.target;
+    const base = muted ? 0 : s.target;
+    // Only the music slot ducks under minigames; ambient uses its own target.
+    const goal = s === music && musicDucked && !muted ? base * MUSIC_DUCK : base;
     const v = s.el.volume;
-    const nv = v + (goal - v) * 0.06;
+    // Snap back to full volume faster when unducking so walking doesn't stay quiet
+    const rate = s === music && !musicDucked && v < goal ? 0.18 : 0.06;
+    const nv = v + (goal - v) * rate;
     s.el.volume = Math.max(0, Math.min(1, Math.abs(nv - goal) < 0.005 ? goal : nv));
     if (s.el.volume !== goal) busy = true;
     if (s.el.volume === 0 && s.target === 0 && s !== ambient) {
@@ -51,8 +58,18 @@ export const audio = {
     pump();
   },
   stopMusic() {
+    musicDucked = false;
     music.target = 0;
     this.duckAmbient(false);
+    pump();
+  },
+  /** Soften BGM under minigames / side-games / sequences only. Walking stays at full target. */
+  duckMusic(duck: boolean) {
+    if (musicDucked === duck) {
+      if (duck) pump();
+      return;
+    }
+    musicDucked = duck;
     pump();
   },
   startAmbient(src: string) {
@@ -76,6 +93,7 @@ export const audio = {
     pump();
   },
   stopAll() {
+    musicDucked = false;
     music.target = 0;
     if (ambient.el) ambient.target = 0;
     pump();
